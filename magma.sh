@@ -66,6 +66,10 @@ while [[ "$#" -gt 0 ]]; do
 	   OP="init"
 	   shift 1
 	   ;;
+	--flush)
+	   OP="flush"
+	   shift 1
+	   ;;
 	--list)
 	   OP="list"
 	   shift 1
@@ -159,4 +163,6 @@ elif [[ "$OP" == "prove" ]]; then
     python3 ./proposition.py --db $DB --load "$PROP"  --prove  # loads a NSG rule into redis propositions from CLI
 elif [[ "$OP" == "compile" ]]; then
     python3 ./NSG.compiler.py --db $DB  --op prove    # compile (same as whatIf)
+elif [[ "$OP" == "flush" ]]; then
+    python3 ./blade.py --db $DB --flush --direction "$DIRECTION" # flush redis
 fi

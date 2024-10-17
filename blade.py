@@ -4,8 +4,9 @@ import json,argparse,redis,sys,os
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--db", required=True, type=int, choices=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], help="redis database id")
-parser.add_argument("--op", required=True, choices=['add','retag','show','init','asof'], help="operation")
+parser.add_argument("--op", required=False, choices=['add','retag','show','init','asof'], help="operation")
 parser.add_argument("--direction", required=True, choices=['Inbound','Outbound'], help="Inbound|Outbound")
+parser.add_argument("--flush", required=False, action="store_true",help="flush redis")
 args = parser.parse_args()
 
 DB=args.db
@@ -21,6 +22,11 @@ r = redis.StrictRedis(host='localhost', port=6379, db=DB)
 r.sadd("tags","closed")
 r.sadd("tags","open")
 tags=r.smembers("tags")
+
+if args.flush:
+  r.flushdb(DB)
+  print(f"{DIR} flushed")
+  sys.exit()
 
 def delete_db(scope):
   if scope=='all':

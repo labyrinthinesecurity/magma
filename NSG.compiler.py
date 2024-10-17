@@ -901,7 +901,7 @@ def ALLBVSAT(Z3proposition,magma):
   sol.add(formula)
   c=sol.check()
   init=True
-  #print("ALLBVSAT check",c)
+  print("ALLBVSAT check",c)
   while c==sat:
     S[k]=[]
     asn=True
@@ -1033,6 +1033,7 @@ def ALLBVSAT(Z3proposition,magma):
     c=sol.check()
     k=k+1
   coalescedCubes=[]
+  print("XS",S)
   for aCubeIndex in S:
     coalescedCube=coalesce(S[aCubeIndex])
     coalescedCubes.append(coalescedCube)
@@ -1083,9 +1084,9 @@ def intersect(proposition,partition):
   sol.add(formula)
   c=sol.check()
   if c==sat:
-    pass
-    #print(f"  intersection found between this proposition and {partition} axioms")
-    #print("MODEL",sol.model())
+    #pass
+    print(f"  intersection found between this proposition and {partition} axioms")
+    print("MODEL",sol.model())
   else:
     pass
     #print(f"NO intersection found between this proposition and {partition} axioms")
@@ -1115,10 +1116,10 @@ def prove():
     intc,magma_closed,Z3proposition=intersect(proposition,'closed')
     into,magma_open,Z3proposition=intersect(proposition,'open')
     if intc==unsat and into==unsat:
-      #print(f"  proposition {cnt} is fully undetermined. No passlets can be extracted.")
+      print(f"  proposition {cnt} is fully undetermined. No passlets can be extracted.")
       continue
     if intc==sat and into==unsat:
-      #print(f"  proposition {cnt} intersects with the closed class")
+      print(f"  proposition {cnt} intersects the closed class")
       postanswer,ccpost=ALLBVSAT(Z3proposition,magma_closed)
       if (postanswer==unsat):
         if ccpost is not None:
@@ -1132,22 +1133,23 @@ def prove():
         else:
           print("  *** nothing new under the sun")
     elif intc==unsat and into==sat:
-      #print(f"  proposition {cnt} intersects with the open class")
+      print(f"  proposition {cnt} intersects the open class")
       postanswer,ccpost=ALLBVSAT(Z3proposition,magma_open)
       if (postanswer==unsat):
         if ccpost is not None:
-          #print(f"  *** removing PROPOSITION {cnt} from unknowns")
-          #r.srem('unknown',aR)
+          print(f"  *** removing PROPOSITION {cnt} from unknowns")
+          r.srem('unknown',aR)
           if len(ccpost)>0:
             print(f"  *** adding the following passlets")
             for ac in ccpost:
               print("  ---",ac)
-              #r.sadd('unknown',str(ac))
+              r.sadd('unknown',str(ac))
         else:
           print("  *** nothing new under the sun")
     elif intc==sat and into==sat:
-      #print(f"  proposition {cnt} intersects with both classes")
+      print(f"  proposition {cnt} intersects both classes")
       postanswer,ccpost=ALLBVSAT(Z3proposition,Or(magma_closed,magma_open))
+      print("outcome",postanswer,ccpost)
       if (postanswer==unsat):
         if ccpost is not None:
           #print(f"  *** removing PROPOSITION {cnt} from unknowns")

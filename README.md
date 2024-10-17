@@ -46,7 +46,7 @@ Note that magma reserves db 0 to inbound NSGs and db 1 to outbound NSGs in redis
 Adjust flows direction (Inbound/Outbound) to your liking
 
 ```
-./NSG.compiler.sh --init --direction Inbound
+./magma.sh --init --direction Inbound
 ```
 
 ### ARG query
@@ -72,15 +72,33 @@ resources
 
 Feel free to adjust it.
 
-# What-if scenario
+# testing
 
-## testing
-
-Add proposition
 ```
-./magma.sh --prove '{'protocol': '*', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.1.0.0/16', 'destinationPort': '443'}' --direction Inbound
+./magma.sh --flush --direction Inbound
 
-{protocol: *, sourceAddressPrefix: *, destinationAddressPrefix: 10.1.0.0/16, destinationPort: 443} added to unknown in redis
+Inbound flushed
+```
+
+Add passing rule (/15 = 10.20.0.0 - 10.21.255.255):
+```
+./magma.sh --allow '{'protocol': 'TCP', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.20.0.0/15', 'destinationPort': '443'}' --direction Inbound
+
+{protocol: TCP, sourceAddressPrefix: *, destinationAddressPrefix: 10.20.0.0/15, destinationPort: 443} added to closed in redis
+```
+
+Add blocking rule (/30 = 10.22.0.12 - 10.22.0.15):
+```
+./magma.sh --block '{'protocol': 'TCP', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.22.0.12/30', 'destinationPort': '443'}' --direction Inbound
+
+{protocol: TCP, sourceAddressPrefix: *, destinationAddressPrefix: 10.22.0.12/30, destinationPort: 443} added to open in redis
+```
+
+Add proposition (/13 = 10.16.0.0 - 10.23.255.255)
+```
+./magma.sh --prove '{'protocol': 'TCP', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.16.0.0/13', 'destinationPort': '443'}' --direction Inbound
+
+{protocol: *, sourceAddressPrefix: TCP, destinationAddressPrefix: 10.16.0.0/13, destinationPort: 443} added to unknown in redis
 ```
 
 List propositions
@@ -88,39 +106,27 @@ List propositions
 ./magma.sh --list --direction Inbound
 
 the following propositions must be proved:
-  PROPOSITION 1 {protocol: *, sourceAddressPrefix: *, destinationAddressPrefix: 10.1.0.0/16, destinationPort: 443}
-```
-
-Add passing rule:
-```
-./magma.sh --allow '{'protocol': 'TCP', 'sourceAddressPrefix': '10.0.0.0/8', 'destinationAddressPrefix': '10.1.0.0/15', 'destinationPort': '443'}' --direction Inbound
-
-{protocol: TCP, sourceAddressPrefix: 10.0.0.0/8, destinationAddressPrefix: 10.1.0.0/15, destinationPort: 443} added to closed in redis
-```
-
-Add blocking rule:
-```
-./magma.sh --block '{'protocol': 'TCP', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.1.255.8/31', 'destinationPort': '443'}' --direction Inbound
-
-{protocol: TCP, sourceAddressPrefix: *, destinationAddressPrefix: 10.1.255.8/31, destinationPort: 443} added to open in redis
+  PROPOSITION 1 {protocol: TCP, sourceAddressPrefix: *, destinationAddressPrefix: 10.16.0.0/13, destinationPort: 443}
 ```
 
 Compile (calculate the passlet):
 ```
 ./magma.sh --compile --direction Inbound
 
+  *** adding the following passlets
+  --- {'protocol': '0', 'sourceAddressPrefix': '0.0.0.1-255.255.255.254', 'destinationAddressPrefix': '10.22.0.16-10.23.255.255', 'destinationPort': '443'}
+  --- {'protocol': '0', 'sourceAddressPrefix': '0.0.0.1-255.255.255.254', 'destinationAddressPrefix': '10.22.0.0-10.22.0.11', 'destinationPort': '443'}
+  --- {'protocol': '0', 'sourceAddressPrefix': '0.0.0.1-255.255.255.254', 'destinationAddressPrefix': '10.16.0.0-10.19.255.255', 'destinationPort': '443'}
 ```
 
-## in production (cron task)
+# What-if scenario
+
 ```
-./magma.sh ---whatIf '{'protocol': 'TCP', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.1.0.0/15', 'destinationPort': '443'}' --direction Inbound
+./magma.sh --whatIf '{'protocol': '*', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.1.0.0/15', 'destinationPort': '443'}' --direction Inbound
 ```
 
 # Drift scenario
 
-## testing
-
-## in production (cron task)
 ```
-./magma.sh --drift --direction --Inbound
+./magma.sh --drift --direction Inbound
 ```
