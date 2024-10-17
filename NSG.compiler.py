@@ -1272,5 +1272,4 @@ magma_open=None
 if OP=='whatIf' or OP=='prove':
   prove()
 elif OP=='drift':
-  #delete_db('unknown')
   prove()
