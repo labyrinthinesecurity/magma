@@ -4,79 +4,106 @@
 
 
 ## What is Azure Magma?
-
 ***Azure Magma*** is a powerful tool that lets organizations automate the management of thousands of Network Security Groups in a cost-efficient way.
 
-To use this tool, your organization souhld ideally meet these 3 criteria:
+To use this tool, your organization should ideally meet these 3 criteria:
 - devSecOps model: each local feature team manages its own security groups
 - central supervision: a central security team oversees network security
 - zero-trust: your zero-trust model is **identity-based**, not network-based. It means that you don't allow network connections on a point-to-point basis. Rather, you allow relatively large source and destination IP ranges to communicate
 
 
 ## Quick start
-
-
-## How it works?
-
-### Principle: direction matters
-
-### Principle: Allowed access only
-Magma fetches your Network security groups using the Azure Resource Graph Explorer API. It is only interested in **non-default** security rules, with **Allowed** access.
-
-Security rules with **Denied** access are safely ignored because of the choice of the zero-trust model: we assume that, in each of your NSGs, you have a default security rule with least priority blocking every flow not explicitely allowed. 
-
-### Principle: Priorities are irrelevant
-
-### Principle: Scope matters, because NSGs are equivalent
-
-### Principle: network security tags are equivalent
-
-# setup
-
-## install redis or valkey for Python
-
+### installation
 ```
-apt-get install redis-server python3-redis
+apt-get install redis-server python3-redis azure-cli
 ```
 
-## install the azure cli
-
-```
-apt-get install azure-cli
-```
-
-## set environment variables
-
-### Management groups
-Variable MGMT_GROUPS contains a comma separated list of Azure management groups to scope the NSGs you want to monitor
-
-Example (exporting from bash): 
+### environment variables
+Scope your NSGs to some coma separated Azure management groups:
 ```
 export MGMT_GROUPS="\"MY-PROD-GROUP\",\"MY-DEV-GROUP\""
 ```
+Declare a read only SPN to fetch the SPNs:
+```
+export ARM_TENANT_ID="***"
+export ARM_CLIENT_ID="***"
+export ARM_CLIENT_SECRET="***"
+```
 
-### Azure SPN
-By default, magma.sh uses ***azure login*** with a **read only** service principal name (SPN) to authenticate and query the Microsoft Azure Resources Explorer API.
-You must set 3 variables for this to work:
+### First test
+Empty propositions for NSGs in the Inbound direction
+```
+./magma.sh --flushall --direction Inbound
+Inbound axioms and propositions flushed
+```
 
-- ARM_TENANT_ID: the UUID of your Tenant
-- ARM_CLIENT_ID: the UUID of the SPN
-- ARM_CLIENT_SECRET: the secret of the SPN
+Add a sample security rule allowing access. The force mode will require a confirmation, it should only be used for testing
+```
+./magma.sh --force:allow '{'protocol': 'TCP', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.20.0.0/15', 'destinationPort': '443'}' --direction Inbound
+WARNING! force:allow might break the Magma Quotient and should ONLY be used for testing! Proceed? (Y/n)
+Y
+{protocol: TCP, sourceAddressPrefix: *, destinationAddressPrefix: 10.20.0.0/15, destinationPort: 443} added to closed in redis
+```
+(Note the /15 netmask => 10.20.0.0 - 10.21.255.255).
 
-# initialize redis/valkey
+Add a sample blocking security rule.
+```
+./magma.sh --force:block '{'protocol': 'TCP', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.22.0.12/30', 'destinationPort': '443'}' --direction Inbound
+WARNING! force:block might break the Magma Quotient and should ONLY be used for testing! Proceed? (Y/n)
+Y
+{protocol: TCP, sourceAddressPrefix: *, destinationAddressPrefix: 10.22.0.12/30, destinationPort: 443} added to open in redis
+```
+(Note the /30 netmask => 10.22.0.12 - 10.22.0.15)
 
-Note that magma reserves db 0 to inbound NSGs and db 1 to outbound NSGs in redis
+Add a sample proposition, overlapping partially the above rules. Adding propositions are always safe since they are unproven, no need to require confirmation
+```
+./magma.sh --prove '{'protocol': 'TCP', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.16.0.0/13', 'destinationPort': '443'}' --direction Inbound
 
-## fetch NSGs from Azure Resources Explorer and store them to redis as propositions
+{protocol: *, sourceAddressPrefix: TCP, destinationAddressPrefix: 10.16.0.0/13, destinationPort: 443} added to propositions in redis
+```
+(Note the /13 netmask => 10.16.0.0 - 10.23.255.255)
 
-### Command (inbound direction)
 
+List current propositions. There should be only one
+```
+./magma.sh --list --direction Inbound
+
+the following proposition(s) must be proved:
+  {protocol: TCP, sourceAddressPrefix: *, destinationAddressPrefix: 10.16.0.0/13, destinationPort: 443}
+total: 1
+```
+
+Compile. This will break down the proposition into the smallest possible fragments, called ***passlets***, that are actually unproven. 
+```
+./magma.sh --compile --direction Inbound
+
+  proposition replaced by the following passlets
+    {'protocol': '0', 'sourceAddressPrefix': '0.0.0.1-255.255.255.254', 'destinationAddressPrefix': '10.22.0.16-10.23.255.255', 'destinationPort': '443'}
+    {'protocol': '0', 'sourceAddressPrefix': '0.0.0.1-255.255.255.254', 'destinationAddressPrefix': '10.22.0.0-10.22.0.11', 'destinationPort': '443'}
+    {'protocol': '0', 'sourceAddressPrefix': '0.0.0.1-255.255.255.254', 'destinationAddressPrefix': '10.16.0.0-10.19.255.255', 'destinationPort': '443'}
+```
+In the above example, the initial proposition was broken down into 3 passlets.
+
+
+### What next
+Refer to the documentation for detailed information on:
+- the foundations (what is an axiom, a proposition, a Magma Quotient)
+- how to works behind the scene
+- how it compares with other Azure tools
+
+The next section explains how to backfill your existing NSGs into a Magma Quotient.
+
+## Backfiling your NSGs into a Magma Quotient
+
+### Import inbound NSGs
+
+The following rule will import all your inbound NSGs as propositions
 ```
 ./magma.sh --init --direction Inbound
 123 rules imported
 ```
 
-Verify by listing all propositions:
+Verify import by listing all propositions:
 ```
 ./magma.sh --list --direction Inbound
 {"protocol": "TCP", "sourceAddressPrefix": "VirtualNetwork", "destinationAddressPrefix": "VirtualNetwork", "destinationPort": "443"}
@@ -85,9 +112,7 @@ Verify by listing all propositions:
 total: 123 
 ```
 
-### ARG query used for fetching NSGs
-
-The query is currently set to:
+For information, the import query is:
 ```
 resources
 | where type == "microsoft.network/networksecuritygroups"
@@ -106,65 +131,32 @@ resources
 | where portwild!="*"
 ```
 
-Feel free to adjust it.
+### Prove/disprove each proposition one by one
 
-# testing
-
-Empty Inbound redis cache completely
-```
-./magma.sh --flushall --direction Inbound
-Inbound axioms and propositions flushed
-```
-
-Add passing rule (/15 netmask => 10.20.0.0 - 10.21.255.255). The force mode will require a confirmation, it should only be used for testing
-```
-./magma.sh --force:allow '{'protocol': 'TCP', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.20.0.0/15', 'destinationPort': '443'}' --direction Inbound
-WARNING! force:allow might break the Magma Quotient and should ONLY be used for testing! Proceed? (Y/n)
-Y
-{protocol: TCP, sourceAddressPrefix: *, destinationAddressPrefix: 10.20.0.0/15, destinationPort: 443} added to closed in redis
-```
-
-Add blocking rule (/30  netmask => 10.22.0.12 - 10.22.0.15).The force mode will require a confirmation, it should only be used for testing
-```
-./magma.sh --force:block '{'protocol': 'TCP', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.22.0.12/30', 'destinationPort': '443'}' --direction Inbound
-WARNING! force:block might break the Magma Quotient and should ONLY be used for testing! Proceed? (Y/n)
-Y
-{protocol: TCP, sourceAddressPrefix: *, destinationAddressPrefix: 10.22.0.12/30, destinationPort: 443} added to open in redis
-```
-
-Add proposition (/13 netmask => 10.16.0.0 - 10.23.255.255)
-```
-./magma.sh --prove '{'protocol': 'TCP', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.16.0.0/13', 'destinationPort': '443'}' --direction Inbound
-
-{protocol: *, sourceAddressPrefix: TCP, destinationAddressPrefix: 10.16.0.0/13, destinationPort: 443} added to propositions in redis
-```
-
-List propositions
+List all the proposition which remain to be proved:
 ```
 ./magma.sh --list --direction Inbound
-
-the following proposition(s) must be proved:
-  {protocol: TCP, sourceAddressPrefix: *, destinationAddressPrefix: 10.16.0.0/13, destinationPort: 443}
-total: 1
 ```
 
-Compile (calculate the passlets):
+For each proposition that you have reviewed and that you want to ***allow***, copy/paste the proposition into a prove:allow command
 ```
-./magma.sh --compile --direction Inbound
-
-  proposition replaced by the following passlets
-    {'protocol': '0', 'sourceAddressPrefix': '0.0.0.1-255.255.255.254', 'destinationAddressPrefix': '10.22.0.16-10.23.255.255', 'destinationPort': '443'}
-    {'protocol': '0', 'sourceAddressPrefix': '0.0.0.1-255.255.255.254', 'destinationAddressPrefix': '10.22.0.0-10.22.0.11', 'destinationPort': '443'}
-    {'protocol': '0', 'sourceAddressPrefix': '0.0.0.1-255.255.255.254', 'destinationAddressPrefix': '10.16.0.0-10.19.255.255', 'destinationPort': '443'}
+./magma.sh --direction Inbound prove:allow '{"protocol": "TCP", "sourceAddressPrefix": "VirtualNetwork", "destinationAddressPrefix": "VirtualNetwork", "destinationPort": "100-200"}'
 ```
 
-# What-if scenario
+Likewise, for each proposition that you have reviewed and that you want to ***block***, copy/paste the proposition into a prove:block command
+```
+./magma.sh --direction Inbound prove:block '{"protocol": "TCP", "sourceAddressPrefix": "VirtualNetwork", "destinationAddressPrefix": "VirtualNetwork", "destinationPort": "3389"}'
+```
+
+Rince and repeat (list, prove:allow or prove:block, etc) until the list of propositions is empty.
+
+## What-if scenario
 
 ```
 ./magma.sh --whatIf '{'protocol': '*', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.1.0.0/15', 'destinationPort': '443'}' --direction Inbound
 ```
 
-# Drift scenario
+## Drift scenario
 
 ```
 ./magma.sh --drift --direction Inbound
