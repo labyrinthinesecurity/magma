@@ -6,7 +6,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--db", required=True, type=int, choices=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], help="redis database id")
 parser.add_argument("--op", required=False, choices=['add','retag','show','init','asof'], help="operation")
 parser.add_argument("--direction", required=True, choices=['Inbound','Outbound'], help="Inbound|Outbound")
-parser.add_argument("--flush", required=False, action="store_true",help="flush redis")
+parser.add_argument("--flushall", required=False, action="store_true",help="flush redis axioms and propositions")
+parser.add_argument("--flush", required=False, action="store_true",help="flush redis propositions only")
 args = parser.parse_args()
 
 DB=args.db
@@ -23,11 +24,6 @@ r.sadd("tags","closed")
 r.sadd("tags","open")
 tags=r.smembers("tags")
 
-if args.flush:
-  r.flushdb(DB)
-  print(f"{DIR} flushed")
-  sys.exit()
-
 def delete_db(scope):
   if scope=='all':
     r.flushdb()
@@ -35,6 +31,16 @@ def delete_db(scope):
     members=r.smembers(scope)
     for member in members:
       r.srem(scope,member)
+
+if args.flushall:
+  r.flushdb(DB)
+  print(f"{DIR} axioms and propositions flushed")
+  sys.exit()
+
+if args.flush:
+  delete_db('unknown')
+  print(f"{DIR} propositions flushed")
+  sys.exit()
 
 closed0=r.smembers("closed")
 if OP=='show':
@@ -62,12 +68,12 @@ uk0=r.smembers("unknown")
 if OP=='show':
   print(" ")
   if len(uk0)>0:
-    print("begin theorems")
+    print("begin propositions")
     for aC in uk0:
       print("  ",aC.decode('UTF-8'))
-    print("end theorems")
+    print("end propositions")
   else:
-    print("no theorems")
+    print("no propositions")
 
 
 def findRule(rule):
@@ -188,14 +194,16 @@ def importRules(what):
   for an in ns:
     ans=json.dumps(an)
     if r.sismember('closed',ans):
-      print("ignoring rule, already an axiom",ans)
+      print("ignoring rule, already a closed axiom",ans)
+    elif r.sismember('open',ans):
+      print("ignoring rule, already an open axiom",ans)
     else:
       cnt+=1
       rez=r.sadd(what,ans)
       if rez!=1:
         print("error cannot load rule",ans)
         sys.exit()
-  print(f"{cnt} rules imported as {what} axioms")
+  print(f"{cnt} rules imported")
 
 def listRules(tag):
   res=r.smembers(tag)
@@ -212,7 +220,8 @@ if OP=='add':
 elif OP=='retag':
   retagRule()
 elif OP=='init':
-  importRules('closed')
+  delete_db('all')
+  importRules('unknown')
 elif OP=='asof':
   delete_db('unknown')
   importRules('unknown')

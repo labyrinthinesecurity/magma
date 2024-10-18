@@ -13,7 +13,7 @@ parser.add_argument("--prove", required=False, action="store_true",help="add a p
 args = parser.parse_args()
 
 DB=args.db
-WHAT=None
+WHAT='unknown'
 
 if args.allow:
   WHAT='closed'
@@ -26,16 +26,19 @@ r = redis.StrictRedis(host='localhost', port=6379, db=DB)
 
 if args.load and WHAT:
   r.sadd(WHAT,args.load)
+  if WHAT=='unknown':
+    WHAT="propositions"
   print(f"{args.load} added to {WHAT} in redis")
+
 
 if args.list:
   unknowns=r.smembers('unknown')
   if len(unknowns)==0:
     print("no propositions to prove.")
   else:
-    print("the following propositions must be proved:")
+    print("the following proposition(s) must be proved:")
     cnt=0
-    for rule in unknowns:
+    for rule in sorted(unknowns):
       cnt+=1
-      print("  PROPOSITION",cnt,rule.decode('utf-8'))
-  print("")
+      print("  ",rule.decode('utf-8'))
+    print(f"total: {cnt}")

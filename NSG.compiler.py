@@ -1093,12 +1093,17 @@ def intersect(proposition,partition):
   return c,before,RXpredicate
 
 
-def prove():
+def prove(aproposition,quotient):
   global OpenPredicates,ClosedPredicates,OpenRules,ClosedRules,Rules,openRules,closedRules,magma_open,magma_closed
-  l=listRules('unknown')
-  if (len(l))==0:
-    print("no proposition found")
-    return None
+  mode='commit'
+  if not aproposition:
+    mode='search'
+    l=listRules('unknown')
+    if (len(l))==0:
+      print("no proposition found")
+      return None
+  else:
+    l=[aproposition]
   cnt=0
   for proposition in l:
     ClosedRules=[]
@@ -1117,54 +1122,75 @@ def prove():
     into,magma_open,Z3proposition=intersect(proposition,'open')
     if intc==unsat and into==unsat:
       print(f"  proposition {cnt} is fully undetermined. No passlets can be extracted.")
+      if mode=='commit':
+        print("PROVED")
+        r.srem('unknown',proposition)
+        r.sadd(quotient,proposition)
+        sys.exit(0)
       continue
     if intc==sat and into==unsat:
-      print(f"  proposition {cnt} intersects the closed class")
+      print(f"  proposition {cnt} intersects only the closed class")
+      if mode=='commit' and quotient=='allow':
+        print("PROVED")
+        r.srem('unknown',proposition)
+        r.sadd(quotient,proposition)
+        sys.exit(0)
+      elif mode=='commit' and quotient!='allow':
+        print("NOT proved")
+        sys.exit(-1)
       postanswer,ccpost=ALLBVSAT(Z3proposition,magma_closed)
       if (postanswer==unsat):
         if ccpost is not None:
           #print(f"  *** removing PROPOSITION {cnt} from unknowns")
-          #r.srem('unknown',aR)
+          r.srem('unknown',proposition)
           if len(ccpost)>0:
-            print(f"  *** adding the following passlets")
+            print(f"  proposition replaced by the following passlets")
             for ac in ccpost:
-              print("  ---",ac)
-              #r.sadd('unknown',str(ac))
+              print("    ",ac)
+              r.sadd('unknown',str(ac))
         else:
           print("  *** nothing new under the sun")
     elif intc==unsat and into==sat:
-      print(f"  proposition {cnt} intersects the open class")
+      print(f"  proposition {cnt} intersects only the open class")
+      if mode=='commit' and quotient=='block':
+        print("PROVED")
+        r.srem('unknown',proposition)
+        r.sadd(quotient,proposition)
+        sys.exit(0)
+      elif mode=='commit' and quotient!='block':
+        print("NOT proved")
+        sys.exit(-1)
       postanswer,ccpost=ALLBVSAT(Z3proposition,magma_open)
       if (postanswer==unsat):
         if ccpost is not None:
-          print(f"  *** removing PROPOSITION {cnt} from unknowns")
-          r.srem('unknown',aR)
+          #print(f"  *** removing PROPOSITION {cnt} from unknowns")
+          r.srem('unknown',proposition)
           if len(ccpost)>0:
-            print(f"  *** adding the following passlets")
+            print(f"  proposition replaced by the following passlets")
             for ac in ccpost:
-              print("  ---",ac)
+              print("    ",ac)
               r.sadd('unknown',str(ac))
         else:
           print("  *** nothing new under the sun")
     elif intc==sat and into==sat:
       print(f"  proposition {cnt} intersects both classes")
       postanswer,ccpost=ALLBVSAT(Z3proposition,Or(magma_closed,magma_open))
-      print("outcome",postanswer,ccpost)
       if (postanswer==unsat):
         if ccpost is not None:
           #print(f"  *** removing PROPOSITION {cnt} from unknowns")
-          #r.srem('unknown',aR)
+          r.srem('unknown',proposition)
           if len(ccpost)>0:
-            print(f"  *** adding the following passlets")
+            print(f"  proposition replaced by the following passlets")
             for ac in ccpost:
-              print("  ---",ac)
-          #    r.sadd('unknown',str(ac))
+              print("    ",ac)
+              r.sadd('unknown',str(ac))
         else:
           print("  *** nothing new under the sun")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--db", required=True, type=int, choices=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], help="redis database")
-parser.add_argument("--op", required=True, type=str, choices=["whatIf","prove","drift"], help="whatIf|prove|drift")
+parser.add_argument("--op", required=True, type=str, choices=["whatIf","prove","drift","prove:allow","prove:block"], help="whatIf|prove|drift")
+parser.add_argument("--proposition", required=False, type=str, help="normalized proposition")
 args = parser.parse_args()
 
 DB=args.db
@@ -1272,6 +1298,10 @@ magma_closed=None
 magma_open=None
 
 if OP=='whatIf' or OP=='prove':
-  prove()
+  prove(None,None)
 elif OP=='drift':
-  prove()
+  prove(None,None)
+elif OP=='prove:allow' and args.proposition:
+  prove(args.proposition,'closed')
+elif OP=='prove:block' and args.proposition:
+  prove(args.proposition,'open')

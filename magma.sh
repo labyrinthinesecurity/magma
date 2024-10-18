@@ -70,6 +70,10 @@ while [[ "$#" -gt 0 ]]; do
 	   OP="flush"
 	   shift 1
 	   ;;
+        --flushall)
+           OP="flushall"
+           shift 1
+           ;;
 	--list)
 	   OP="list"
 	   shift 1
@@ -89,8 +93,14 @@ while [[ "$#" -gt 0 ]]; do
            PROP="$2"
            shift 1
            ;;
-        --allow)
-	   OP="allow"
+        --force:allow)
+	   echo "WARNING! force:allow might break the Magma Quotient and should ONLY be used for testing! Proceed? (Y/n)"
+	   read answer
+	   if [ "$answer" == "${answer#[Y]}" ] ;then
+	     echo "Aborting..."
+	     exit -1
+	   fi
+	   OP="force:allow"
            if [[ -n "$2" ]] && [[ "$2" != --* ]]; then
              PROP="$2"
              shift 2
@@ -99,8 +109,34 @@ while [[ "$#" -gt 0 ]]; do
              usage
            fi
            ;;
-        --block)
-           OP="block"
+        --prove:allow)
+           OP="prove:allow"
+           if [[ -n "$2" ]] && [[ "$2" != --* ]]; then
+             PROP="$2"
+             shift 2
+           else
+             echo "Error: Argument for $1 is missing" >&2
+             usage
+           fi
+           ;;
+        --prove:block)
+           OP="prove:block"
+           if [[ -n "$2" ]] && [[ "$2" != --* ]]; then
+             PROP="$2"
+             shift 2
+           else
+             echo "Error: Argument for $1 is missing" >&2
+             usage
+           fi
+           ;;
+        --force:block)
+	   echo "WARNING! force:block might break the Magma Quotient and should ONLY be used for testing! Proceed? (Y/n)"
+           read answer
+           if [ "$answer" == "${answer#[Y]}" ] ;then
+             echo "Aborting..."
+	     exit -1
+           fi
+           OP="force:block"
            if [[ -n "$2" ]] && [[ "$2" != --* ]]; then
              PROP="$2"
              shift 2
@@ -144,7 +180,7 @@ if [[ "$OP" == "init" ]]; then
 #    fetch_ARG "init" "$DIRECTION"                   # generates init.json from ARG live ground truth in ARG
 #    echo "Please standby, it may take a minute..."
 #    python3 ./ARG.normalize.py --db $DB --op init --direction "$DIRECTION"   # (PREPROCESSOR): generates normalized.init.json from init.json
-    python3 ./blade.py --db $DB --op init --direction "$DIRECTION" # flush redis then load normalized.init.json into redis as (closed) axioms 
+    python3 ./blade.py --db $DB --op init --direction "$DIRECTION" # flush redis then load normalized.init.json into redis as propositions 
 elif [[ "$OP" == "list" ]]; then
     python3 ./proposition.py --db $DB --list  # list propositions in redis
 elif [[ "$OP" == "drift" ]]; then
@@ -153,16 +189,24 @@ elif [[ "$OP" == "drift" ]]; then
     #python3 ./blade.py --db $DB --op asof --direction "$DIRECTION" # flush propositions (ONLY) in redis then load normalized.asof.json into redis as propositions
     python3 ./NSG.compiler.py --db $DB  --op drift    # compile
 elif [[ "$OP" == "whatif" ]]; then
+    python3 ./blade.py --db $DB --flush --direction "$DIRECTION" # flush redis propositions only
     python3 ./proposition.py --db $DB --load "$PROP"  # loads a NSG rule into redis propositions from CLI
+    python3 ./proposition.py --db $DB --list  # list propositions in redis
     python3 ./NSG.compiler.py --db $DB  --op whatIf    # compile
-elif [[ "$OP" == "allow" ]]; then
+elif [[ "$OP" == "force:allow" ]]; then
     python3 ./proposition.py --db $DB --load "$PROP"  --allow  # loads a NSG rule into redis closed axioms from CLI
-elif [[ "$OP" == "block" ]]; then
+elif [[ "$OP" == "prove:allow" ]]; then
+    python3 ./NSG.compiler.py --db $DB --proposition "$PROP"  --op prove:allow  # loads a NSG rule into redis closed axioms from CLI
+elif [[ "$OP" == "prove:block" ]]; then
+    python3 ./NSG.compiler.py --db $DB --proposition "$PROP"  --op prove:block  # loads a NSG rule into redis closed axioms from CLI
+elif [[ "$OP" == "force:block" ]]; then
     python3 ./proposition.py --db $DB --load "$PROP"  --block  # loads a NSG rule into redis open axioms from CLI
 elif [[ "$OP" == "prove" ]]; then
     python3 ./proposition.py --db $DB --load "$PROP"  --prove  # loads a NSG rule into redis propositions from CLI
 elif [[ "$OP" == "compile" ]]; then
-    python3 ./NSG.compiler.py --db $DB  --op prove    # compile (same as whatIf)
+    python3 ./NSG.compiler.py --db $DB  --op whatIf    # compile 
+elif [[ "$OP" == "flushall" ]]; then
+    python3 ./blade.py --db $DB --flushall --direction "$DIRECTION" # flush redis axioms AND propositions
 elif [[ "$OP" == "flush" ]]; then
-    python3 ./blade.py --db $DB --flush --direction "$DIRECTION" # flush redis
+    python3 ./blade.py --db $DB --flush --direction "$DIRECTION" # flush redis propositions only
 fi
