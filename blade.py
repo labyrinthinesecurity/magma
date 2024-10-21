@@ -207,8 +207,13 @@ def importRules(what):
   print(f"{cnt} rules imported")
 
 def reloadRules():
+  print("RELOADING...")
   with open('recording/ALLOWED.txt','r') as f:
-    ns=json.load(f)
+    ll = [line.strip() for line in f]
+  ns=[]
+  for l in ll:
+    print(l,json.loads(l))
+    ns.append(json.loads(l))
   cnt=0
   for an in ns:
     ans=json.dumps(an)
@@ -222,7 +227,11 @@ def reloadRules():
         sys.exit()
   print(f"{cnt} rules loaded as closed axioms")
   with open('recording/BLOCKED.txt','r') as f:
-    ns=json.load(f)
+    ll = [line.strip() for line in f]
+  ns=[]
+  for l in ll:
+    print(l,json.loads(l))
+    ns.append(json.loads(l))
   cnt=0
   for an in ns:
     ans=json.dumps(an)
@@ -257,6 +266,6 @@ elif OP=='init':
 elif OP=='asof':
   delete_db('unknown')
   importRules('unknown')
-elif OP=='redo':
+elif args.redo:
   delete_db('all')
   reloadRules()

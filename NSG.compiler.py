@@ -1086,9 +1086,9 @@ def intersect(proposition,partition):
   sol.add(formula)
   c=sol.check()
   if c==sat:
-    #pass
-    print(f"  intersection found between this proposition and {partition} axioms")
-    print("MODEL",sol.model())
+    pass
+#    print(f"  intersection found between this proposition and {partition} axioms")
+#    print("MODEL",sol.model())
   else:
     pass
     #print(f"NO intersection found between this proposition and {partition} axioms")
@@ -1131,25 +1131,25 @@ def prove(aproposition,quotient):
     if intc==unsat and into==unsat:
       print(f"  proposition {cnt} is fully undetermined. No passlets can be extracted.")
       if mode=='commit':
-        print("PROVED",quotient,recfile,os.path.isdir("recording"),os.path.isfile(f"recording/{recfile}"))
-        r.srem('unknown',proposition)
-        r.sadd(quotient,proposition)
-        if recfile is not None and os.path.isdir("recording") and os.path.isfile(f"recording/{recfile}"):
-          with open(f"recording/{recfile}","a") as f:
-            f.write(aproposition)
-        sys.exit(0)
-      continue
-    if intc==sat and into==unsat:
-      print(f"  proposition {cnt} intersects only the closed class")
-      if mode=='commit' and quotient=='allow':
         print("PROVED")
         r.srem('unknown',proposition)
         r.sadd(quotient,proposition)
         if recfile is not None and os.path.isdir("recording") and os.path.isfile(f"recording/{recfile}"):
           with open(f"recording/{recfile}","a") as f:
-            f.write(aproposition)
+            f.write(aproposition+"\n")
         sys.exit(0)
-      elif mode=='commit' and quotient!='allow':
+      continue
+    if intc==sat and into==unsat:
+      print(f"  proposition {cnt} intersects only the closed class")
+      if mode=='commit' and (quotient=='allow' or quotient=='closed'):
+        print("PROVED")
+        r.srem('unknown',proposition)
+        r.sadd(quotient,proposition)
+        if recfile is not None and os.path.isdir("recording") and os.path.isfile(f"recording/{recfile}"):
+          with open(f"recording/{recfile}","a") as f:
+            f.write(aproposition+"\n")
+        sys.exit(0)
+      elif mode=='commit' and (quotient!='allow' and quotient!='closed'):
         print("NOT proved")
         sys.exit(-1)
       postanswer,ccpost=ALLBVSAT(Z3proposition,magma_closed)
@@ -1166,15 +1166,15 @@ def prove(aproposition,quotient):
           print("  *** nothing new under the sun")
     elif intc==unsat and into==sat:
       print(f"  proposition {cnt} intersects only the open class")
-      if mode=='commit' and quotient=='block':
+      if mode=='commit' and (quotient=='block' or quotient=='open'):
         print("PROVED")
         r.srem('unknown',proposition)
         r.sadd(quotient,proposition)
         if recfile is not None and os.path.isdir("recording") and os.path.isfile(f"recording/{recfile}"):
           with open(f"recording/{recfile}","a") as f:
-            f.write(aproposition)
+            f.write(aproposition+"\n")
         sys.exit(0)
-      elif mode=='commit' and quotient!='block':
+      elif mode=='commit' and (quotient!='block' and quotient!='open'):
         print("NOT proved")
         sys.exit(-1)
       postanswer,ccpost=ALLBVSAT(Z3proposition,magma_open)

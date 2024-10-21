@@ -1,7 +1,6 @@
 #!/usr/bin/bash
 
 usage() {
-    echo "Usage: $0 --init --db <redis database id> --direction <Inbound|Outbound>"
     exit 1
 }
 
@@ -62,15 +61,23 @@ while [[ "$#" -gt 0 ]]; do
              usage
            fi
            ;;
-	--init)
-	   OP="init"
-	   shift 1
-	   mkdir -p recording 
-	   [ -f recording/ALLOWED.txt ] && mv recording/ALLOWED.txt recording/ALLOWED.bak 
-	   [ -f recording/BLOCKED.txt ] && mv recording/BLOCKED.txt recording/BLOCKED.bak 
+        --new:recording)
+          OP="new:recording"
+           shift 1
+           mkdir -p recording
+           [ -f recording/ALLOWED.txt ] && mv recording/ALLOWED.txt recording/ALLOWED.bak
+           [ -f recording/BLOCKED.txt ] && mv recording/BLOCKED.txt recording/BLOCKED.bak
            touch recording/ALLOWED.txt
-	   touch recording/BLOCKED.txt
+           touch recording/BLOCKED.txt
+           ;;
+	--force:init)
+	   OP="force:init"
+	   shift 1
 	   ;;
+        --cache:init)
+           OP="cache:init"
+           shift 1
+           ;;
 	--flush)
 	   OP="flush"
 	   shift 1
@@ -78,11 +85,6 @@ while [[ "$#" -gt 0 ]]; do
         --flushall)
            OP="flushall"
            shift 1
-           mkdir -p recording
-           [ -f recording/ALLOWED.txt ] && mv recording/ALLOWED.txt recording/ALLOWED.bak
-           [ -f recording/BLOCKED.txt ] && mv recording/BLOCKED.txt recording/BLOCKED.bak
-           touch recording/ALLOWED.txt
-           touch recording/BLOCKED.txt
            ;;
         --redo)
            OP="redo"
@@ -125,7 +127,7 @@ while [[ "$#" -gt 0 ]]; do
            ;;
         --prove:allow)
            if [ ! -d recording ]; then
-             echo "Error: please init first"
+             echo "Error: please force:init or cache:init first"
              exit -1
            fi
            OP="prove:allow"
@@ -139,7 +141,7 @@ while [[ "$#" -gt 0 ]]; do
            ;;
         --prove:block)
            if [ ! -d recording ]; then
-             echo "Error: please init first"
+             echo "Error: please force:init or cache:init first"
              exit -1
            fi
            OP="prove:block"
@@ -198,11 +200,13 @@ else
   usage
 fi
 
-if [[ "$OP" == "init" ]]; then
-#    fetch_ARG "init" "$DIRECTION"                   # generates init.json from ARG live ground truth in ARG
-#    echo "Please standby, it may take a minute..."
-#    python3 ./ARG.normalize.py --db $DB --op init --direction "$DIRECTION"   # (PREPROCESSOR): generates normalized.init.json from init.json
+if [[ "$OP" == "force:init" ]]; then
+    fetch_ARG "init" "$DIRECTION"                   # generates init.json from ARG live ground truth in ARG
+    echo "Please standby, it may take a minute..."
+    python3 ./ARG.normalize.py --db $DB --op init --direction "$DIRECTION"   # (PREPROCESSOR): generates normalized.init.json from init.json
     python3 ./blade.py --db $DB --op init --direction "$DIRECTION" # flush redis then load normalized.init.json into redis as propositions 
+elif [[ "$OP" == "cache:init" ]]; then
+    python3 ./blade.py --db $DB --op init --direction "$DIRECTION" # flush redis then load normalized.init.json into redis as propositions
 elif [[ "$OP" == "list" ]]; then
     python3 ./proposition.py --db $DB --list  # list propositions in redis
 elif [[ "$OP" == "drift" ]]; then
@@ -233,4 +237,10 @@ elif [[ "$OP" == "flush" ]]; then
     python3 ./blade.py --db $DB --flush --direction "$DIRECTION" # flush redis propositions only
 elif [[ "$OP" == "redo" ]]; then
     python3 ./blade.py --db $DB --redo --direction "$DIRECTION" # flush redis and load axioms from recording/ALLOWED.txt and recording/BLOCKED.txt
+elif [[ "$OP" == "new:recording" ]]; then
+    mkdir -p recording
+    [ -f recording/ALLOWED.txt ] && mv recording/ALLOWED.txt recording/ALLOWED.bak
+    [ -f recording/BLOCKED.txt ] && mv recording/BLOCKED.txt recording/BLOCKED.bak
+    touch recording/ALLOWED.txt
+    touch recording/BLOCKED.txt
 fi
