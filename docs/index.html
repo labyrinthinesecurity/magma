@@ -6,39 +6,38 @@
   <title>Azure Magma</title>
    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
 </head>
-<body>
+<body style="background-color: #13001f;">
         <section class="section">
     <div class="container">
       <h1 class="title">
-        Welcome to Azure magma documentation
+        Azure magma - a NSG compiler
       </h1>
       <br>
+      <center><img width="50%" src="magma.png"></center>
       <h2 class="subtitle">
         What is a Magma?
       </h2>
-      <center><img src="../magma.png"></center>
       <p class="">
-        A magma is one of the simplests structure one can imagine: it's a set equipped with an operation.
-	We use it to store Azure <strong>Network Security Groups (NSGs)</Strong> of a whole organization to reason about their security at scale and automatically.
-	The operation attached to NSGs is also quite simple: it's the union of rules, that we note as a plus sign '+'. <br>
-	In practice, we have two different magmas: one for the <strong>inbound</strong> direction, and another one for the <strong>outbound</strong> one.
+        A magma is one of the simplest structure one can imagine: it's a set equipped with an operation.
+We use it to store Azure <strong>Network Security Groups (NSGs)</Strong> of a whole organization to reason about their security at scale and automatically.
+The operation attached to NSGs is also quite simple: it's the union of rules, that we note as a plus sign '+'. <br>
+In practice, we have two different magmas: one for the <strong>inbound</strong> direction, and another one for the <strong>outbound</strong> one.
       </p>
       <br>
       <p class="">
-        Our magmas are always partitioned into two isolated zones (called equivalence classes): 
-	<ul>
-		<li> - allowed rules
-		<li> - blocked rules
-	</ul>
+        Our magmas are always partitioned into two isolated zones (called equivalence classes):
+<ul>
+<li> - allowed rules
+<li> - blocked rules
+</ul>
         This makes sense, because a security rule cannot be allowed and blocked at the same time.
         The resulting structure is called a <strong>Magma Quotient</strong>. This is the actual space in which all the reasoning takes place.
       </p>
       <br>
       <p>
-      An interesting property of the (otherwise boring) Magma Quotient is that the '+' operation is <strong>congruent</strong>. It means that whenever we 'add' two security rules together, provided they belong to the same equivaence class, the resulting object remains in the same equivalence class.
+      An interesting property of the (otherwise boring) Magma Quotient is that the '+' operation is <strong>congruent</strong>. It means that whenever we 'add' two security rules together, provided they belong to the same equivalence class, the resulting object remains in the same equivalence class.
       </p>
     </div>
   </section>
 </body>
 </html>
-

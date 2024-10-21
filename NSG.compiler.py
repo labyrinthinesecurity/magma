@@ -138,7 +138,8 @@ def t_newline(t):
 
 def t_error(t):
     print(f"Illegal character {t.value[0]!r}")
-    t.lexer.skip(1)
+    sys.exit()
+#    t.lexer.skip(1)
 
 def p_list(p):
   '''list : LEFTB itemopt RIGHTB'''
@@ -424,6 +425,7 @@ def p_dport(p):
 def p_error(p):
     print(nrules)
     print(f"Syntax error at {p.value!r}")
+    sys.exit()
 
 def loader(tag):
   rules=[]
@@ -1120,12 +1122,21 @@ def prove(aproposition,quotient):
     print(f"PROPOSITION {cnt}",proposition)
     intc,magma_closed,Z3proposition=intersect(proposition,'closed')
     into,magma_open,Z3proposition=intersect(proposition,'open')
+    if (quotient=='allow' or quotient=='closed') and aproposition:
+      recfile='ALLOWED.txt'
+    elif (quotient=='block' or quotient=='open')  and aproposition:
+      recfile='BLOCKED.txt'
+    else:
+      recfile=None
     if intc==unsat and into==unsat:
       print(f"  proposition {cnt} is fully undetermined. No passlets can be extracted.")
       if mode=='commit':
-        print("PROVED")
+        print("PROVED",quotient,recfile,os.path.isdir("recording"),os.path.isfile(f"recording/{recfile}"))
         r.srem('unknown',proposition)
         r.sadd(quotient,proposition)
+        if recfile is not None and os.path.isdir("recording") and os.path.isfile(f"recording/{recfile}"):
+          with open(f"recording/{recfile}","a") as f:
+            f.write(aproposition)
         sys.exit(0)
       continue
     if intc==sat and into==unsat:
@@ -1134,6 +1145,9 @@ def prove(aproposition,quotient):
         print("PROVED")
         r.srem('unknown',proposition)
         r.sadd(quotient,proposition)
+        if recfile is not None and os.path.isdir("recording") and os.path.isfile(f"recording/{recfile}"):
+          with open(f"recording/{recfile}","a") as f:
+            f.write(aproposition)
         sys.exit(0)
       elif mode=='commit' and quotient!='allow':
         print("NOT proved")
@@ -1156,6 +1170,9 @@ def prove(aproposition,quotient):
         print("PROVED")
         r.srem('unknown',proposition)
         r.sadd(quotient,proposition)
+        if recfile is not None and os.path.isdir("recording") and os.path.isfile(f"recording/{recfile}"):
+          with open(f"recording/{recfile}","a") as f:
+            f.write(aproposition)
         sys.exit(0)
       elif mode=='commit' and quotient!='block':
         print("NOT proved")

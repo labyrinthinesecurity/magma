@@ -33,10 +33,10 @@ resources
 | extend rule = extractjson("$.properties",tostring(prules))
 | where prules.properties.access=="Allow"
 | where prules.properties.direction=="'$2'"
-| extend destwild = extractjson("$.properties.destinationAddressPrefix",tostring(prules))
-| extend srcwild = extractjson("$.properties.sourceAddressPrefix",tostring(prules))
-| extend portwild = extractjson("$.properties.destinationPortRange",tostring(prules))
-| where portwild!="*"
+| mv-expand nics = properties.networkInterfaces
+| mv-expand subs = properties.subnets
+| extend associated = isnotnull(nics) or isnotnull(subs)
+| where associated
     '''
     echo $query
     local records=`az graph query -q "$query" --first 1 --output json | jq .total_records`
@@ -65,6 +65,11 @@ while [[ "$#" -gt 0 ]]; do
 	--init)
 	   OP="init"
 	   shift 1
+	   mkdir -p recording 
+	   [ -f recording/ALLOWED.txt ] && mv recording/ALLOWED.txt recording/ALLOWED.bak 
+	   [ -f recording/BLOCKED.txt ] && mv recording/BLOCKED.txt recording/BLOCKED.bak 
+           touch recording/ALLOWED.txt
+	   touch recording/BLOCKED.txt
 	   ;;
 	--flush)
 	   OP="flush"
@@ -72,6 +77,15 @@ while [[ "$#" -gt 0 ]]; do
 	   ;;
         --flushall)
            OP="flushall"
+           shift 1
+           mkdir -p recording
+           [ -f recording/ALLOWED.txt ] && mv recording/ALLOWED.txt recording/ALLOWED.bak
+           [ -f recording/BLOCKED.txt ] && mv recording/BLOCKED.txt recording/BLOCKED.bak
+           touch recording/ALLOWED.txt
+           touch recording/BLOCKED.txt
+           ;;
+        --redo)
+           OP="redo"
            shift 1
            ;;
 	--list)
@@ -110,6 +124,10 @@ while [[ "$#" -gt 0 ]]; do
            fi
            ;;
         --prove:allow)
+           if [ ! -d recording ]; then
+             echo "Error: please init first"
+             exit -1
+           fi
            OP="prove:allow"
            if [[ -n "$2" ]] && [[ "$2" != --* ]]; then
              PROP="$2"
@@ -120,6 +138,10 @@ while [[ "$#" -gt 0 ]]; do
            fi
            ;;
         --prove:block)
+           if [ ! -d recording ]; then
+             echo "Error: please init first"
+             exit -1
+           fi
            OP="prove:block"
            if [[ -n "$2" ]] && [[ "$2" != --* ]]; then
              PROP="$2"
@@ -209,4 +231,6 @@ elif [[ "$OP" == "flushall" ]]; then
     python3 ./blade.py --db $DB --flushall --direction "$DIRECTION" # flush redis axioms AND propositions
 elif [[ "$OP" == "flush" ]]; then
     python3 ./blade.py --db $DB --flush --direction "$DIRECTION" # flush redis propositions only
+elif [[ "$OP" == "redo" ]]; then
+    python3 ./blade.py --db $DB --redo --direction "$DIRECTION" # flush redis and load axioms from recording/ALLOWED.txt and recording/BLOCKED.txt
 fi

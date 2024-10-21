@@ -8,6 +8,7 @@ parser.add_argument("--op", required=False, choices=['add','retag','show','init'
 parser.add_argument("--direction", required=True, choices=['Inbound','Outbound'], help="Inbound|Outbound")
 parser.add_argument("--flushall", required=False, action="store_true",help="flush redis axioms and propositions")
 parser.add_argument("--flush", required=False, action="store_true",help="flush redis propositions only")
+parser.add_argument("--redo", required=False, action="store_true",help="reload exioms from last recording")
 args = parser.parse_args()
 
 DB=args.db
@@ -205,6 +206,37 @@ def importRules(what):
         sys.exit()
   print(f"{cnt} rules imported")
 
+def reloadRules():
+  with open('recording/ALLOWED.txt','r') as f:
+    ns=json.load(f)
+  cnt=0
+  for an in ns:
+    ans=json.dumps(an)
+    if r.sismember('closed',ans):
+      print("ignoring rule, already a closed axiom",ans)
+    else:
+      cnt+=1
+      rez=r.sadd('closed',ans)
+      if rez!=1:
+        print("error cannot load rule",ans)
+        sys.exit()
+  print(f"{cnt} rules loaded as closed axioms")
+  with open('recording/BLOCKED.txt','r') as f:
+    ns=json.load(f)
+  cnt=0
+  for an in ns:
+    ans=json.dumps(an)
+    if r.sismember('open',ans):
+      print("ignoring rule, already an open axiom",ans)
+    else:
+      cnt+=1
+      rez=r.sadd('open',ans)
+      if rez!=1:
+        print("error cannot load rule",ans)
+        sys.exit()
+  print(f"{cnt} rules loaded as open axioms")
+
+
 def listRules(tag):
   res=r.smembers(tag)
   resstr=[]
@@ -225,3 +257,6 @@ elif OP=='init':
 elif OP=='asof':
   delete_db('unknown')
   importRules('unknown')
+elif OP=='redo':
+  delete_db('all')
+  reloadRules()
