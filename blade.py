@@ -225,6 +225,8 @@ def reloadRules():
       if rez!=1:
         print("error cannot load rule",ans)
         sys.exit()
+      if r.sismember('unknown',ans):
+        r.srem('unknown',ans)
   print(f"{cnt} rules loaded as closed axioms")
   with open('recording/BLOCKED.txt','r') as f:
     ll = [line.strip() for line in f]
@@ -243,6 +245,8 @@ def reloadRules():
       if rez!=1:
         print("error cannot load rule",ans)
         sys.exit()
+      if r.sismember('unknown',ans):
+        r.srem('unknown',ans)
   print(f"{cnt} rules loaded as open axioms")
 
 
@@ -267,5 +271,6 @@ elif OP=='asof':
   delete_db('unknown')
   importRules('unknown')
 elif args.redo:
-  delete_db('all')
+  delete_db('closed')
+  delete_db('open')
   reloadRules()
