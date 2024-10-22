@@ -890,7 +890,7 @@ def extend(Sk,phi,B):
         minBVSAT
   return Sk
     
-def ALLBVSAT(Z3proposition,magma):
+def ALLBVSAT(Z3proposition,magma,operation):
   global tag
   global nrules
   k=0
@@ -899,11 +899,14 @@ def ALLBVSAT(Z3proposition,magma):
 #  sol.add(constraints)
   sol.add(Implies(hasSIP,And(saztagval==0,sazvnetval==0)),Implies(hasDIP,And(daztagval==0,dazvnetval==0)))
   NSK=BoolVector('NSK',10000)
-  formula=And(Not(magma),Z3proposition)   # what's new
+  if operation=='standard':
+    formula=And(Not(magma),Z3proposition)   # what's new
+  elif operation=='counterexample':
+    formula=And(magma,Z3proposition)   # intersection
   sol.add(formula)
   c=sol.check()
   init=True
-  print("ALLBVSAT check",c)
+#  print("ALLBVSAT check",c)
   while c==sat:
     S[k]=[]
     asn=True
@@ -1035,7 +1038,7 @@ def ALLBVSAT(Z3proposition,magma):
     c=sol.check()
     k=k+1
   coalescedCubes=[]
-  print("XS",S)
+#  print("XS",S)
   for aCubeIndex in S:
     coalescedCube=coalesce(S[aCubeIndex])
     coalescedCubes.append(coalescedCube)
@@ -1102,7 +1105,7 @@ def prove(aproposition,quotient):
     mode='search'
     l=listRules('unknown')
     if (len(l))==0:
-      print("no proposition found")
+      print("nothing to prove")
       return None
   else:
     l=[aproposition]
@@ -1129,7 +1132,7 @@ def prove(aproposition,quotient):
     else:
       recfile=None
     if intc==unsat and into==unsat:
-      print(f"  proposition {cnt} is fully undetermined. No passlets can be extracted.")
+      print(f"  proposition {cnt} intersects no class.")
       if mode=='commit':
         print("PROVED")
         r.srem('unknown',proposition)
@@ -1151,14 +1154,20 @@ def prove(aproposition,quotient):
         sys.exit(0)
       elif mode=='commit' and (quotient!='allow' and quotient!='closed'):
         print("NOT proved")
+        postanswer,ccpost=ALLBVSAT(Z3proposition,magma_closed,'counterexample')
+        if (postanswer==unsat):
+          if ccpost is not None:
+            if len(ccpost)>0:
+              print("    counterexample(s)")
+              for ac in ccpost:
+                print("    ",ac)
         sys.exit(-1)
-      postanswer,ccpost=ALLBVSAT(Z3proposition,magma_closed)
+      postanswer,ccpost=ALLBVSAT(Z3proposition,magma_closed,'standard')
       if (postanswer==unsat):
         if ccpost is not None:
-          #print(f"  *** removing PROPOSITION {cnt} from unknowns")
           r.srem('unknown',proposition)
           if len(ccpost)>0:
-            print(f"  proposition replaced by the following passlets")
+            print(f"  original proposition replaced by the following proposition(s)")
             for ac in ccpost:
               print("    ",ac)
               r.sadd('unknown',str(ac))
@@ -1176,14 +1185,20 @@ def prove(aproposition,quotient):
         sys.exit(0)
       elif mode=='commit' and (quotient!='block' and quotient!='open'):
         print("NOT proved")
+        postanswer,ccpost=ALLBVSAT(Z3proposition,magma_open,'counterexample')
+        if (postanswer==unsat):
+          if ccpost is not None:
+            if len(ccpost)>0:
+              print("    counterexample(s)")
+              for ac in ccpost:
+                print("    ",ac)
         sys.exit(-1)
-      postanswer,ccpost=ALLBVSAT(Z3proposition,magma_open)
+      postanswer,ccpost=ALLBVSAT(Z3proposition,magma_open,'standard')
       if (postanswer==unsat):
         if ccpost is not None:
-          #print(f"  *** removing PROPOSITION {cnt} from unknowns")
           r.srem('unknown',proposition)
           if len(ccpost)>0:
-            print(f"  proposition replaced by the following passlets")
+            print(f"  original proposition replaced by the following atomic proposition(s)")
             for ac in ccpost:
               print("    ",ac)
               r.sadd('unknown',str(ac))
@@ -1191,13 +1206,22 @@ def prove(aproposition,quotient):
           print("  *** nothing new under the sun")
     elif intc==sat and into==sat:
       print(f"  proposition {cnt} intersects both classes")
-      postanswer,ccpost=ALLBVSAT(Z3proposition,Or(magma_closed,magma_open))
+      if mode=='commit':
+        print('NOT proved')
+        postanswer,ccpost=ALLBVSAT(Z3proposition,Or(magma_closed,magma_open),'counterexample')
+        if (postanswer==unsat):
+          if ccpost is not None:
+            if len(ccpost)>0:
+              print("    counterexample(s)")
+              for ac in ccpost:
+                print("    ",ac)
+        sys.exit(-1)
+      postanswer,ccpost=ALLBVSAT(Z3proposition,Or(magma_closed,magma_open),'standard')
       if (postanswer==unsat):
         if ccpost is not None:
-          #print(f"  *** removing PROPOSITION {cnt} from unknowns")
           r.srem('unknown',proposition)
           if len(ccpost)>0:
-            print(f"  proposition replaced by the following passlets")
+            print(f"  original proposition replaced by the following proposition(s)")
             for ac in ccpost:
               print("    ",ac)
               r.sadd('unknown',str(ac))
@@ -1206,8 +1230,8 @@ def prove(aproposition,quotient):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--db", required=True, type=int, choices=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], help="redis database")
-parser.add_argument("--op", required=True, type=str, choices=["whatIf","prove","drift","prove:allow","prove:block"], help="whatIf|prove|drift")
-parser.add_argument("--proposition", required=False, type=str, help="normalized proposition")
+parser.add_argument("--op", required=True, type=str, choices=["whatIf","prove","drift","prove:allow","prove:block"], help="whatIf|prove:allow|prove:block|drift")
+parser.add_argument("--proposition", required=False, type=str, help="a proposition")
 args = parser.parse_args()
 
 DB=args.db
@@ -1229,7 +1253,7 @@ tags=r.smembers("tags")
 openRules=0
 closedRules=0
 CAP=65536
-PREDICATES_CAP=1000
+PREDICATES_CAP=10000
 h1=256
 h2=h1*h1
 h3=h2*h1
@@ -1248,14 +1272,14 @@ OpenRules=[]
 SingleRule=[]
 Rules=[]
 
-sIPlows=BitVecVector('sIPlows', 32, 1000)
-sIPhighs=BitVecVector('sIPhighs', 32, 1000)
-dIPlows=BitVecVector('dIPlows', 32, 1000)
-dIPhighs=BitVecVector('dIPhighs', 32, 1000)
-Portlows=BitVecVector('Portlows', 16, 1000)
-Porthighs=BitVecVector('Porthighs', 16, 1000)
-Protolows=BitVecVector('Protolows', 4, 1000)
-Protohighs=BitVecVector('Protohis', 4, 1000)
+sIPlows=BitVecVector('sIPlows', 32, 10000)
+sIPhighs=BitVecVector('sIPhighs', 32, 10000)
+dIPlows=BitVecVector('dIPlows', 32, 10000)
+dIPhighs=BitVecVector('dIPhighs', 32, 10000)
+Portlows=BitVecVector('Portlows', 16, 10000)
+Porthighs=BitVecVector('Porthighs', 16, 10000)
+Protolows=BitVecVector('Protolows', 4, 10000)
+Protohighs=BitVecVector('Protohis', 4, 10000)
 zeroVal=IntVal(0)
 eightVal=IntVal(8)
 

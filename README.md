@@ -134,8 +134,8 @@ resources
 
 Inspect the rule and determine a status:
 - allow: the rule is OK, it can be directly turned into an allow axiom
-- block: the rule is dangerous, it can be directly turned into a deny axiom
-- mix: part of the rule is OK, the other part is dangerous: we break split it to create an allow axiom and a deny axiom
+- block: the rule is dangerous, it can be directly turned into a block axiom
+- mix: part of the rule is OK, the other part is dangerous: we break split it to create an allow axiom and a block axiom
 - undetermined: we don't know what to do with this rule for now: we keep it as a proposition.
 
 #### Turn a proposition into an axiom
@@ -160,11 +160,22 @@ If you make a mistake, simply edit ALLOWED.txt, remove the line, and restore the
 
 cache:init imports your NSGs from a local file (managed by magma) rather than directly from Azure: this is faster. You may use force:init if you prefer
 
-force:redo restores all allow axioms from recording/ALLOWED.txt without re-proving them, so it is fast
+force:redo restores all allow axioms from recording/ALLOWED.txt without re-proving them, so it is very fast.
+In production, ALWAYS use prove:redo. It restores all allow axioms from recording/ALLOWED.txt by proving them first, but it is slighlty slower.
 
-In production, ALWAYS use prove:redo. It restores all allow axioms from recording/ALLOWED.txt by proving them first
+If prove:redo cannot prove an axiom, it will explain why by printing all the counter examples which cannot be satisfied:
+```
+./magma --prove:redo --direction Inbound
+{"protocol": "TCP", "sourceAddressPrefix": "VirtualNetwork", "destinationAddressPrefix": "VirtualNetwork", "destinationPort": "80"}
+PROPOSITION 1 {"protocol": "TCP", "sourceAddressPrefix": "VirtualNetwork", "destinationAddressPrefix": "VirtualNetwork", "destinationPort": "80"}
+  proposition 1 intersects only the closed class
+NOT proved
+    counterexample(s)
+     {'protocol': '0', 'sourceAddressPrefix': 'VirtualNetwork', 'destinationAddressPrefix': 'VirtualNetwork', 'destinationPort': '80'}
+FATAL: cannot prove block axiom: {"protocol": "TCP", "sourceAddressPrefix": "VirtualNetwork", "destinationAddressPrefix": "VirtualNetwork", "destinationPort": "80"}
+```
 
-Here is an example that turns a proposition into a deny axiom:
+Here is an example that turns a proposition into a block axiom:
 ```
 ./magma --prove:block '{'protocol': 'TCP', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.20.0.0/15', 'destinationPort': '443'}' --direction Inbound
 ```
@@ -177,7 +188,7 @@ Here again, edit BLOCKED.txt if you make a mistake, then restore the state:
 ./magma --force:redo --direction Inbound
 ```
 
-List the remaining propositions and ensure that the counter as decreased by one:
+List the remaining propositions and ensure that the counter has decreased by one:
 ```
 ./magma --list --direction Inbound
 ```
@@ -186,7 +197,7 @@ Repeat the process until you've reviewed all the propositions (i.e. the list is 
 
 #### Split a proposition into its allow and block parts
 
-Copy the proposition from the previous listing, identify the parts, and save them as allow and deny axioms
+Copy the proposition from the previous listing, identify the parts, and save them as allow and block axioms
 
 In the following example, the proposition is split depending on the source address prefix: all ingress flows to TCP port 443 are allowed, except when coming from IP 10.10.0.0
 ```
@@ -195,50 +206,61 @@ In the following example, the proposition is split depending on the source addre
 ./magma --prove:allow '{'protocol': 'TCP', 'sourceAddressPrefix': '10.10.0.1-255.255.255.255', 'destinationAddressPrefix': '10.20.0.0/15', 'destinationPort': '443'}' --direction Inbound
 ```
 
+Here is another example where we forbid reaching TCP port 80 from the Virtual Network:
+```
+./magma --prove:allow '{"protocol": "TCP", "sourceAddressPrefix": "VirtualNetwork", "destinationAddressPrefix": "*", "destinationPort": "1-79"}' --direction Inbound
+./magma --prove:allow '{"protocol": "TCP", "sourceAddressPrefix": "VirtualNetwork", "destinationAddressPrefix": "*", "destinationPort": "81-65535"}' --direction Inbound
+./magma --prove:block '{"protocol": "TCP", "sourceAddressPrefix": "VirtualNetwork", "destinationAddressPrefix": "*", "destinationPort": "80"}' --direction Inbound
+```
+
 If you make an error, proceed as explained before: edit ALLOWED.txt or BLOCKED.txt then issue a redo command
 
 Note that if you list propositions, this "split" rule will remain and the counter won't decrease. That's because NSG owners MUST modify their NSGs to align with the allow axiom. Only when all owners have updated their NSG will the proposition vanish from the list.
 
+#### Backup the recording folder!
+
+When you are done, you are strongly advised to make a copy of the recording directory, this will save you the pain to start over the whole process should you erase ALLOWED.txt or BLOCKED.Txt by mistake
 
 ### Option 2: import axioms one by one
 
+Initialize an empty cache:
+```
+./magma --direction Inbound --flushall
+```
 
+Note that, unlike cache:init or force:init, flushall doesn't fetch any actual NSG. After a flushall, your cache contains no axioms and no propositions.
 
-
-
-
-
-
-
-
-
-
-
-
-For each proposition that you have reviewed and that you want to ***allow***, copy/paste the proposition into a prove:allow command
+For each proposition that you want to ***allow***, issue a prove:allow command
 ```
 ./magma --direction Inbound prove:allow '{"protocol": "TCP", "sourceAddressPrefix": "VirtualNetwork", "destinationAddressPrefix": "VirtualNetwork", "destinationPort": "100-200"}'
 ```
 
-Likewise, for each proposition that you have reviewed and that you want to ***block***, copy/paste the proposition into a prove:block command
+Likewise, for each proposition that you want to ***block***, issue a prove:block command
 ```
 ./magma --direction Inbound prove:block '{"protocol": "TCP", "sourceAddressPrefix": "VirtualNetwork", "destinationAddressPrefix": "VirtualNetwork", "destinationPort": "3389"}'
 ```
 
-Rince and repeat (list, prove:allow or prove:block, etc) until the list of propositions is empty.
+Rince and repeat until the list of propositions is empty.
+
 
 ## What-if scenario
 
+Suppose you want to assess the impact of adding an allow axiom to the Inbound direction. The ***whatIf*** command wil let you know if it is possible, and , if not, what is the acceptable subset.
 ```
 ./magma --whatIf '{'protocol': '*', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.1.0.0/15', 'destinationPort': '443'}' --direction Inbound
 ```
 
+Currently, whatIf only works for allow axioms, not for block axioms.
+
+
 ## Drift scenario
 
+Run a regular cron job to check if the depoyed NSGs have drifted from the set of allow and block axioms stored in cache (also stored in the recording directory)
 ```
 ./magma --drift --direction Inbound
 ```
-### What's next?
+
+## What's next?
 Refer to the documentation for detailed information on:
 - the foundations (what is an axiom, a proposition, a Magma Quotient)
 - how to works behind the scene

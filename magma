@@ -251,7 +251,8 @@ elif [[ "$OP" == "prove:redo" ]]; then
       echo $line
       ./magma --direction Inbound --prove:allow "$line"
       if [ $? -ne 0 ]; then
-        echo "UNPROVED allow axiom $line"
+        echo "FATAL: cannot prove allow axiom $line"
+	mv recording/ALLOWED.tmp recording/ALLOWED.txt
 	exit -1
       fi
     done < recording/ALLOWED.tmp
@@ -263,7 +264,8 @@ elif [[ "$OP" == "prove:redo" ]]; then
       echo $line
       ./magma --direction Inbound --prove:block "$line"
       if [ $? -ne 0 ]; then
-        echo "UNPROVED block axiom: $line"
+        echo "FATAL: cannot prove block axiom: $line"
+	mv recording/BLOCKED.tmp recording/BLOCKED.txt
 	exit -1
       fi
     done < recording/BLOCKED.tmp
