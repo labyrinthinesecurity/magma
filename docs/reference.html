@@ -21,9 +21,31 @@
       background-color: #13001f;
       color: #ffffff;
     }
+	strong {
+	  color: green;
+	}
   </style>
 </head>
 <body style="background-color: #13001f;">
+  <section class="section">
+    <div class="container">
+	  <h1 class="title has-text-white">Azure Magma concepts and definitions</h1>
+	  A <strong>proposition</strong> is a NSG security rule which is unproven: it is neither allowed, nor blocked.
+	  <br>An <strong>axiom</strong> is a NSG security rule which is proved as either allowed or denied.
+	</div>
+	<div class="container">
+	<br>Magma handles NSGs which are:
+	<ol>
+		<li> not default rules
+		<li> allowed
+		<li> inbound or outbound
+		<li> associated to an actual NIC or to an actual subnet
+	</ol><br>
+	All axioms (i.e. all proven security rules) are stored in a mathematical structure called a <i>Magma Quotient</i>. 
+	The Magma Quotient is a partition of the space of all proven security rules (the Magma), it's made of two equivalence classes.
+	Allowed rules are items of the allowed <i>equivalence class</i>. Blocked rules are members of the blocked <i>equivalence class</i>.
+	</div>
+  </section>
   <section class="section">
     <div class="container">
       <h1 class="title has-text-white">Azure Magma reference guide</h1>
@@ -77,28 +99,28 @@
 		  <tr>
             <td><button class="button is-danger is-small is-focused">--force:allow</button></td>
             <td>Proposition</td>
-            <td>Transforms a proposition into an allow axiom without consistency check (DANGER!).
+            <td>Transforms a <strong>proposition</strong> into an <strong>allow axiom</strong> without consistency check (DANGER!).
 			<br><i>Example: magma --force:allow '{'protocol': 'TCP', 'sourceAddressPrefix': 'VirtualNetwork', 'destinationAddressPrefix': '*', 'destinationPort': '443'}' --direction Inbound</i>
 			</td>
           </tr>
           <tr>
             <td><button class="button is-success is-small is-focused">--prove:allow</button></td>
             <td>Proposition</td>
-            <td>Proves that a proposition is an allow axiom.
+            <td>Proves that a <strong>proposition</strong> is an <strong>allow axiom</strong>.
 			<br><i>Example: see force:allow</i>
 			</td>
           </tr>
           <tr>
             <td><button class="button is-danger is-small is-focused">--force:block</button></td>
             <td>Proposition</td>
-            <td>Transforms a proposition into a block axiom without consistency check (DANGER!).
+            <td>Transforms a <strong>proposition</strong> into a <strong>block axiom</strong> without consistency check (DANGER!).
 			<br><i>Example: see force:allow</i>
 			</td>
           </tr>
           <tr>
             <td><button class="button is-success is-small is-focused">-prove:block</button></td>
             <td>Proposition</td>
-            <td>Proves that a proposition is a block axiom.
+            <td>Proves that a <strong>proposition</strong> is a <strong>block axiom</strong>.
 			<br><i>Example: see force:allow</i>
 			</td>
           </tr>
@@ -121,14 +143,14 @@
           <tr>
             <td><button class="button is-success is-small is-focused">--compile</button></td>
             <td>N/A</td>
-            <td>Proves that all propositions currently in cache are allow axioms.
+            <td>Proves that all <strong>propositions</strong> currently in cache are <strong>allow axioms</strong>.
 			<br><i>Example: magma --compile --direction Inbound</i>
 			</td>
           </tr>
           <tr>
             <td><button class="button is-success is-small is-focused">--whatIf</button></td>
             <td>Proposition</td>
-            <td>Breaks down the proposition into its biggest allowed and blocked parts, leaving only unknown parts.
+            <td>Breaks down the <strong>proposition</strong> into its biggest allowed and blocked parts, leaving only unknown parts.
 			<br><i>Example: see force:allow</i>
 			</td>
           </tr>

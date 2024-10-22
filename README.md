@@ -4,23 +4,43 @@
 
 
 ## What is Azure Magma?
-***Azure Magma*** is a powerful tool that lets organizations automate the management of ***thousands*** of Network Security Groups in a cost-efficient way. 
-It uses the Z3 solver and the super-fast ALLBVSAT algorithm.
+***Azure Magma*** is a free powerful tool that lets medium and large organizations automate the management of ***thousands*** of Network Security Groups in a cost-efficient way. 
+It uses a SMT solver to implement the super-fast ALLBVSAT algorithm, from Microsoft's secGuru.
 
-The two main uses cases are:
-1. Impact analysis: what if I add this rule to a NSG? To answer the question, Magma will break the rule into its biggest unknown components, so that everything that was already allowed or blocked in the past is not revalidated
-2. Drift management: if a new rule shows up, is it already allowed? blocked? partially allowed? what remains to manually review?
+The two main uses cases addressed by Magma are:
+1. **Impact analysis**: what if I add this rule to a NSG? To answer the question, Magma will break the rule into its biggest unknown components, so that everything that was already allowed or blocked in the past is not revalidated
+2. **Drift management**: if a new rule shows up, is it already allowed? blocked? partially allowed? what remains to review manualy?
 
 To use this tool, your organization should ideally meet 4 criteria:
-- have a devSecOps model where each local feature team manages its own security groups
+- have a devSecOps model where each local feature team manages its own security groups independently
 - have central supervision: a single security team oversees network security
-- embrace **identity-based** zero-trust: your network segmentation shouldn't be fine-grain. Rather, it lets relatively large source and destination IP ranges communicate freely on a port per port basis
-- have a default rule in every NSG which blocks everything that hasn't been explicitely allowed
+- embrace **identity-based** zero-trust: your network segmentation shouldn't be too fine-grain. Rather, it should let relatively large source and destination IP ranges communicate freely on a per-portbasis
+- have a default rule in every NSG which blocks everything that hasn't been explicitely allowed. This rule shouldn't be overriden by a more lenient, higher priority one, of course.
+
+### Concepts
+Magma fetches your NSGs from Azure, but it doesn't fetch all NSGs: only the useful ones! 
+These are the ones featuring ***custom rules*** (not default rules), in ***allowed*** access mode, and ***associated*** to a subnet or to a network interface.
+
+- A ***security rule*** is an atomic rule of a Network Security Group. Note that **Magma doesn't care about the rule priority**. So a security rule, for Magma, is unnumbered. 
+- A ***proposition*** is an unproven security rule.
+- An ***axiom*** is a proven security rule. Axioms can be of two kinds: allow, and block.
+
+There is no GUI: all operations are carried out using the Magma CLI, which is [documented here](docs/reference.html).
+
+The theoretical foundations of Magma are explained in [my newsletter](https://www.linkedin.com/pulse/introducing-azure-magma-christophe-parisel/).
+Since this article, a [few design choices and mathemetical assumptions](docs/index.html) have been clarified or modified. 
 
 ## Quick start
 ### installation
+
+Magma is written in Python, it requires redis or valkey using database IDs 0 and 1 to work properly.
+
+The SMT part is handled by Z3, a theorem prover by Microsoft Research.
+
+Azure CLI is required to fetch NSGs from Azure Resource Graph Explorer's REST API.
+
 ```
-apt-get install redis-server python3-redis azure-cli
+apt-get install redis-server python3-redis azure-cli python3-z3
 ```
 
 ### environment variables
@@ -28,7 +48,7 @@ Scope your NSGs to some coma separated Azure management groups:
 ```
 export MGMT_GROUPS="\"MY-PROD-GROUP\",\"MY-DEV-GROUP\""
 ```
-Declare a read only SPN to fetch the SPNs:
+Declare a ***read only SPN*** to fetch NSGs from these management groups. Obviously, ensure first that it has proper RBAC permissions:
 ```
 export ARM_TENANT_ID="***"
 export ARM_CLIENT_ID="***"
@@ -36,7 +56,8 @@ export ARM_CLIENT_SECRET="***"
 ```
 
 ### First test
-Initialize and empty the cache (Inbound direction)
+Initialize the cache (Inbound direction is bound to database ID 0, Outbound direction is bound to ID 1):
+
 ```
 ./magma --flushall --direction Inbound
 Inbound axioms and propositions flushed
@@ -273,3 +294,6 @@ Refer to the documentation for detailed information on:
 - the foundations (what is an axiom, a proposition, a Magma Quotient)
 - how Magma works behind the scene
 - how it compares with native Azure tools
+
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
