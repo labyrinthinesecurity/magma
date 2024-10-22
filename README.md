@@ -1,16 +1,21 @@
-# Scaling oversight of Network Security Groups
+# Keep hold of your Network Security Groups!
 
 ![alt text](https://github.com/labyrinthinesecurity/magma/blob/master/magma.png?raw=true)
 
 
 ## What is Azure Magma?
-***Azure Magma*** is a powerful tool that lets organizations automate the management of thousands of Network Security Groups in a cost-efficient way.
+***Azure Magma*** is a powerful tool that lets organizations automate the management of ***thousands*** of Network Security Groups in a cost-efficient way. 
+It uses the Z3 solver and the super-fast ALLBVSAT algorithm.
 
-To use this tool, your organization should ideally meet these 3 criteria:
-- devSecOps model: each local feature team manages its own security groups
-- central supervision: a central security team oversees network security
-- zero-trust: your zero-trust model is **identity-based**, not network-based. It means that you don't allow network connections on a point-to-point basis. Rather, you allow relatively large source and destination IP ranges to communicate
+The two main uses cases are:
+1. Impact analysis: what if I add this rule to a NSG? To answer the question, Magma will break the rule into its biggest unknown components, so that everything that was already allowed or blocked in the past is not revalidated
+2. Drift management: if a new rule shows up, is it already allowed? blocked? partially allowed? what remains to manually review?
 
+To use this tool, your organization should ideally meet 4 criteria:
+- have a devSecOps model where each local feature team manages its own security groups
+- have central supervision: a single security team oversees network security
+- embrace **identity-based** zero-trust: your network segmentation shouldn't be fine-grain. Rather, it lets relatively large source and destination IP ranges communicate freely on a port per port basis
+- have a default rule in every NSG which blocks everything that hasn't been explicitely allowed
 
 ## Quick start
 ### installation
@@ -37,7 +42,7 @@ Initialize and empty the cache (Inbound direction)
 Inbound axioms and propositions flushed
 ```
 
-Add a sample security rule allowing access. The force mode will require a confirmation, it should only be used for testing
+Add a sample security rule allowing access, using the **force:allow** command. This mode requires an interactive confirmation, it should only be used for testing:
 ```
 ./magma --force:allow '{'protocol': 'TCP', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.20.0.0/15', 'destinationPort': '443'}' --direction Inbound
 WARNING! force:allow might break the Magma Quotient and should ONLY be used for testing! Proceed? (Y/n)
@@ -46,7 +51,7 @@ Y
 ```
 (Note the /15 netmask => 10.20.0.0 - 10.21.255.255).
 
-Add a sample blocking security rule.
+Add a sample blocking security rule using the **force:block** command.
 ```
 ./magma --force:block '{'protocol': 'TCP', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.22.0.12/30', 'destinationPort': '443'}' --direction Inbound
 WARNING! force:block might break the Magma Quotient and should ONLY be used for testing! Proceed? (Y/n)
@@ -55,7 +60,8 @@ Y
 ```
 (Note the /30 netmask => 10.22.0.12 - 10.22.0.15)
 
-Add a sample proposition, overlapping partially the above rules. Adding propositions are always safe since they are unproven, no need to require confirmation
+Add a sample proposition using the **prove** command Adding propositions are always safe since they are unproven, no need to require confirmation. 
+Note that this proposition was designed to overlap part of the axioms defined above.
 ```
 ./magma --prove '{'protocol': 'TCP', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.16.0.0/13', 'destinationPort': '443'}' --direction Inbound
 
@@ -64,7 +70,7 @@ Add a sample proposition, overlapping partially the above rules. Adding proposit
 (Note the /13 netmask => 10.16.0.0 - 10.23.255.255)
 
 
-List current propositions. There should be only one
+List all propositions using the **list** command. (there should be only one proposition for now)
 ```
 ./magma --list --direction Inbound
 
@@ -85,13 +91,15 @@ Compile. This will break down the proposition into the smallest possible fragmen
 In the above example, the initial proposition was broken down into 3 passlets.
 
 
-The next section explains how to backfill your existing NSGs into a Magma Quotient.
+The next section explains how to backfill your existing NSGs into Magma.
 
-## Backfilling your NSGs into a Magma Quotient
+## Backfilling your NSGs into a Magma
 
 You have two options: 
 - fetch all your current NSGs as propositions, then review them one by one to turn them into axioms
 - start from an empty cache, and add each axiom one by one
+
+Let's review both of them
 
 ### Option 1: mass import existing NSGs
 
@@ -263,5 +271,5 @@ Run a regular cron job to check if the depoyed NSGs have drifted from the set of
 ## What's next?
 Refer to the documentation for detailed information on:
 - the foundations (what is an axiom, a proposition, a Magma Quotient)
-- how to works behind the scene
-- how it compares with other Azure tools
+- how Magma works behind the scene
+- how it compares with native Azure tools

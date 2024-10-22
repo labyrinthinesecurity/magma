@@ -214,9 +214,9 @@ elif [[ "$OP" == "cache:init" ]]; then
 elif [[ "$OP" == "list" ]]; then
     python3 ./proposition.py --db $DB --list  # list propositions in redis
 elif [[ "$OP" == "drift" ]]; then
-    #fetch_ARG "asof" "$DIRECTION"                   # generates asof.json from ARG live ground truth
-    #python3 ./ARG.normalize.py --db $DB --op asof --direction "$DIRECTION"  # (PREPROCESSOR): generates normalized.asof.json from asof.json
-    #python3 ./blade.py --db $DB --op asof --direction "$DIRECTION" # flush propositions (ONLY) in redis then load normalized.asof.json into redis as propositions
+    fetch_ARG "asof" "$DIRECTION"                   # generates asof.json from ARG live ground truth
+    python3 ./ARG.normalize.py --db $DB --op asof --direction "$DIRECTION"  # (PREPROCESSOR): generates normalized.asof.json from asof.json
+    python3 ./blade.py --db $DB --op asof --direction "$DIRECTION" # flush propositions (ONLY) in redis then load normalized.asof.json into redis as propositions
     python3 ./NSG.compiler.py --db $DB  --op drift    # compile
 elif [[ "$OP" == "whatif" ]]; then
     python3 ./blade.py --db $DB --flush --direction "$DIRECTION" # flush redis propositions only

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azure Magma reference guide</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
+  <style>
+    body {
+      background-color: #13001f;
+      color: #ffffff;
+    }
+    table {
+      background-color: #13001f;
+    }
+    th {
+      background-color: #13001f;
+      color: #ffffff;
+    }
+    td {
+      background-color: #13001f;
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body style="background-color: #13001f;">
+  <section class="section">
+    <div class="container">
+      <h1 class="title has-text-white">Azure Magma reference guide</h1>
+	  Flags shown in blue are mandatory. Flags shown in red are for testing only, don't use them in production.
+      <table class="table is-bordered is-striped is-fullwidth">
+        <thead>
+          <tr>
+            <th>Flag</th>
+            <th>Arguments</th>
+            <th>Explanation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><button class="button is-link is-small is-focused">--direction</button></td>
+            <td>Inbound or Outbound</td>
+            <td>Direction of the security rule.
+			<br><i>Example: magma --list --direction Inbound</i>
+			</td>
+          </tr>
+          <tr>
+            <td><button class="button is-success is-small is-focused">--cache:init</button></td>
+            <td>N/A</td>
+            <td>Initialize the cache with NSGs previously fetched from Azure.
+			<br><i>Example: magma --cache:init --direction Inbound</i>
+			</td>
+          </tr>
+          <tr>
+            <td><button class="button is-success is-small is-focused">--force:init</button></td>
+            <td>N/A</td>
+            <td>Initialize the cache directly from Azure (using Azure Resource Explorer API).
+			<br><i>Example: magma --force:init --direction Inbound</i>
+			</td>
+          </tr>
+          <tr>
+            <td><button class="button is-success is-small is-focused">--flush</button></td>
+            <td>N/A</td>
+            <td>Removes all <strong>propositions</strong> from the cache.
+			<br><i>Example: magma --flush --direction Inbound</i>
+			</td>
+          </tr>
+          <tr>
+            <td><button class="button is-success is-small is-focused">--flushall</button></td>
+			<td>N/A</td>
+            <td>Empties the cache (removes <strong>propositions</strong> and <strong>axioms</strong>).
+			<br><i>Example: magma --flushall --direction Inbound</i>
+			</td>
+          </tr>
+		  
+		  
+		  <tr>
+            <td><button class="button is-danger is-small is-focused">--force:allow</button></td>
+            <td>Proposition</td>
+            <td>Transforms a proposition into an allow axiom without consistency check (DANGER!).
+			<br><i>Example: magma --force:allow '{'protocol': 'TCP', 'sourceAddressPrefix': 'VirtualNetwork', 'destinationAddressPrefix': '*', 'destinationPort': '443'}' --direction Inbound</i>
+			</td>
+          </tr>
+          <tr>
+            <td><button class="button is-success is-small is-focused">--prove:allow</button></td>
+            <td>Proposition</td>
+            <td>Proves that a proposition is an allow axiom.
+			<br><i>Example: see force:allow</i>
+			</td>
+          </tr>
+          <tr>
+            <td><button class="button is-danger is-small is-focused">--force:block</button></td>
+            <td>Proposition</td>
+            <td>Transforms a proposition into a block axiom without consistency check (DANGER!).
+			<br><i>Example: see force:allow</i>
+			</td>
+          </tr>
+          <tr>
+            <td><button class="button is-success is-small is-focused">-prove:block</button></td>
+            <td>Proposition</td>
+            <td>Proves that a proposition is a block axiom.
+			<br><i>Example: see force:allow</i>
+			</td>
+          </tr>
+          <tr>
+            <td><button class="button is-success is-small is-focused">--prove</button></td>
+			<td>Proposition</td>
+            <td>Loads a <strong>proposition</strong> into the cache, and does nothing else.
+			<br><i>Example: see force:allow</i>
+			</td>
+          </tr>
+		  
+		  
+	  <tr>
+            <td><button class="button is-success is-small is-focused">--list</button></td>
+            <td>N/A</td>
+            <td>Lists all <strong>propositions</strong> currently in cache.
+			<br><i>Example: magma --list --direction Inbound</i>
+			</td>
+          </tr>
+          <tr>
+            <td><button class="button is-success is-small is-focused">--compile</button></td>
+            <td>N/A</td>
+            <td>Proves that all propositions currently in cache are allow axioms.
+			<br><i>Example: magma --compile --direction Inbound</i>
+			</td>
+          </tr>
+          <tr>
+            <td><button class="button is-success is-small is-focused">--whatIf</button></td>
+            <td>Proposition</td>
+            <td>Breaks down the proposition into its biggest allowed and blocked parts, leaving only unknown parts.
+			<br><i>Example: see force:allow</i>
+			</td>
+          </tr>
+          <tr>
+            <td><button class="button is-success is-small is-focused">--drift</button></td>
+            <td>N/A</td>
+            <td>Fetches NSGs from Azure and identify drifting components from axioms stored in cache.
+			<br><i>Example: magma --compile --direction Inbound</i>
+			</td>
+          </tr>
+	  
+        </tbody>
+      </table>
+    </div>
+  </section>
+</body>
+</html>
