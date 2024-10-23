@@ -5,39 +5,89 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Azure Magma</title>
    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
+<style>
+    body,.menu {
+      background-color: #13001f;
+      color: #ffffff;
+    }
+    table {
+      background-color: #13001f;
+    }
+    th {
+      background-color: #13001f;
+      color: green;
+    }
+    td {
+      background-color: #13001f;
+      color: #ffffff;
+    }
+	strong {
+	  color: green;
+	}
+	.menu-list a {
+        color: green;
+		background-color: #13001f;
+    }
+	.custom-list li {
+            list-style: disc inside;
+			color: #ffffff;
+    }
+  </style>   
 </head>
-<body style="background-color: #13001f;">
-        <section class="section">
+<body>
+  <section class="section">
     <div class="container">
-      <h1 class="title">
-        Azure magma - a NSG compiler
+      <h1 class="title has-text-white">
+        Welcome to Azure magma documentation
       </h1>
-      <br>
-      <center><img width="50%" src="magma.png"></center>
-      <h2 class="subtitle">
-        What is a Magma?
-      </h2>
+      <center><img src="../magma.png"></center>
       <p class="">
-        A magma is one of the simplest structure one can imagine: it's a set equipped with an operation.
-We use it to store Azure <strong>Network Security Groups (NSGs)</Strong> of a whole organization to reason about their security at scale and automatically.
-The operation attached to NSGs is also quite simple: it's the union of rules, that we note as a plus sign '+'. <br>
-In practice, we have two different magmas: one for the <strong>inbound</strong> direction, and another one for the <strong>outbound</strong> one.
+        A Magma is one of the simplests structure one can imagine: it's a set equiped with an operation.
+	    We use it to store Azure <strong>Network Security Groups (NSGs)</Strong> of a whole organization to reason about their security at scale and automatically.
       </p>
-      <br>
-      <p class="">
-        Our magmas are always partitioned into two isolated zones (called equivalence classes):
-<ul>
-<li> - allowed rules
-<li> - blocked rules
-</ul>
-        This makes sense, because a security rule cannot be allowed and blocked at the same time.
-        The resulting structure is called a <strong>Magma Quotient</strong>. This is the actual space in which all the reasoning takes place.
-      </p>
-      <br>
-      <p>
-      An interesting property of the (otherwise boring) Magma Quotient is that the '+' operation is <strong>congruent</strong>. It means that whenever we 'add' two security rules together, provided they belong to the same equivalence class, the resulting object remains in the same equivalence class.
-      </p>
-    </div>
+	  <br>
+	  <p>Please consult the <a href="reference.html">reference guide</a> for detailed operations.</p>
+     </div>
+  </section>
+  <section id="section1" class="section">
+    <div class="container">
+	  <h1 class="title has-text-white">Azure Magma concepts and definitions</h1>
+	  A <strong>proposition</strong> is an unproven NSG security rule: it is neither allowed, nor blocked (denied).
+	  <br>An <strong>axiom</strong> is a proven NSG security rule: it is either allowed, or blocked.
+	</div>
+	<div class="container">
+	<br>Magma handles NSGs which are:
+	<ul class="custom-list">
+		<li> not default Microsoft rules</li>
+		<li> allowed</li>
+		<li> inbound or outbound</li>
+		<li> associated to an actual NIC or to an actual subnet</li>
+	</ul><br>
+	<p>
+	Security rules are given a priority in NSGs: rules with a higher priority take precedence over rules with a lower priority. 
+	Magma doesn't work like this: it reasons only on allowed rules, <i>regardless of their priority</i>.
+	So, if denied rules and allowed rules are interspersed within a same NSG, it will wreak havoc to Magma's reasoning capabilities.
+	</p><br>
+	<p>For Magma to behave as expected, all denied custom rules must be removed from NSGs except one: a <strong>catch-all deny</strong> rule with lowest priority.
+	This rule will be implicitly assumed by Magma, it's up to you to verify it is systematically enforced in all your NSGs.
+	</p><br>
+	<p>Axioms (i.e. all proven security rules) are stored in a mathematical structure called a <i>Magma Quotient</i>. 
+	The Magma Quotient is a partition of the space of all proven security rules (the Magma), it's made of two equivalence classes, and one operation: <i>addition</i>.
+	Allowed rules are members of the <i>"allowed" equivalence class</i>. Blocked rules are members of the <i>"blocked" equivalence class</i>.
+	Security rules are additive, and the addition is congruent. This is the key property that we maintain at all times, not to break consistency of the Magma Quotient.
+	</p><br>
+	<p> Why do we need a "blocked" equivalence class if we don't handle denied rules? That's because we want to <i>review</i> every single security rule in allowed state in Azure.
+	<ol class="custom-list">
+	<li>allowed and <span class="has-text-success">valid</span> rules are meant to belong the allowed equivalence class</li>
+	<li>allowed and <span class="has-text-danger">invalid</span> rules are meant to belong the blocked equivalence class</li>
+	</ol><br>
+	</p>
+	<br>
+	<p>Why do we need a blocked equivalence class if we have a catch-all deny rule? 
+	Blocked axioms are absolutely essential for automation. By reasoning using both allowed and blocked axioms, Magma can streamline the unsupervised classification of new 
+	security rules, and breaks them down efficiently. In the end of the day, this is what makes human review scalable.
+	</div>
   </section>
 </body>
 </html>
+

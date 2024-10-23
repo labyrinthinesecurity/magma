@@ -3,8 +3,8 @@
 ![alt text](https://github.com/labyrinthinesecurity/magma/blob/master/magma.png?raw=true)
 
 
-## What is Azure Magma?
-***Azure Magma*** is a free powerful tool that lets medium and large organizations automate the management of ***thousands*** of Network Security Groups in a cost-efficient way. 
+## What is Azure Magma (Preview)?
+***Azure Magma*** is a free but powerful tool that lets medium and large organizations automate the management of ***thousands*** of Network Security Groups in a cost-efficient way. 
 It uses a SMT solver to implement the super-fast ALLBVSAT algorithm, from Microsoft's secGuru.
 
 The two main uses cases addressed by Magma are:
@@ -25,19 +25,33 @@ These are the ones featuring ***custom rules*** (not default rules), in ***allow
 - A ***proposition*** is an unproven security rule.
 - An ***axiom*** is a proven security rule. Axioms can be of two kinds: allow, and block.
 
-There is no GUI: all operations are carried out using the Magma CLI, which is [documented here](docs/reference.html).
+### Resources
+There is no GUI: all operations are carried out using the Magma CLI, which is [documented here](https://labyrinthinesecurity.github.io/magma/reference.html).
 
 The theoretical foundations of Magma are explained in [my newsletter](https://www.linkedin.com/pulse/introducing-azure-magma-christophe-parisel/).
-Since this article, a [few design choices and mathemetical assumptions](docs/index.html) have been clarified or modified. 
+
+Since this article, a [few design choices and mathematical assumptions](https://labyrinthinesecurity.github.io/magma/index.html) have been clarified or modified. 
+
+The groundbreaking 2016 research paper introducing secGuru is available on [Microsoft Research web site](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/secguru.pdf).
+
+### Known limitations of the Preview
+Currently, we don't support:
+1. Azure network security tags in wildcards. A source address prefix like '*' will not include tags like 'VirtualNetwork', for example. You will need to add an extra explicit axiom for each tag of interest
+2. Application Security groups
+
+### Other known limitations
+1. Denies in security rules. Because Magma doesn't manage rule priorities, if some of your custom rules feature denies with a higher priority than allows, it will wreak havoc into the logic.
+2. If you are using Azure managed VNets, security admin rules are not supported by Magma
 
 ## Quick start
-### installation
 
 Magma is written in Python, it requires redis or valkey using database IDs 0 and 1 to work properly.
 
 The SMT part is handled by Z3, a theorem prover by Microsoft Research.
 
 Azure CLI is required to fetch NSGs from Azure Resource Graph Explorer's REST API.
+
+### installation
 
 ```
 apt-get install redis-server python3-redis azure-cli python3-z3
@@ -159,7 +173,17 @@ resources
 | where associated
 ```
 
-### Review each proposition one by one
+#### Start recording
+
+Storing your decisions on file will save you a lot of time if you need to edit axioms or
+start over. 
+Use the **create:recording*** command to create ALLOWED.txt and BLOCKED.txt files in a subdirectory called recording:
+
+```
+./magma --create:recording --direction Inbound
+```
+
+#### Review each proposition one by one
 
 Inspect the rule and determine a status:
 - allow: the rule is OK, it can be directly turned into an allow axiom
@@ -171,16 +195,14 @@ Inspect the rule and determine a status:
 
 Copy the proposition from the previous listing and paste it into a prove:allow or prove:block command.
 
-Unlike force:allow and force:block that we used before, prove:allow and prove:block don't break the Magma Quotient.
+Unlike force:allow and force:block that we used before, prove:allow and prove:block don't break the Magma Quotient. What's more, it appends the new axiom not only in memory cache, but in the recording/ALLOWED.txt file
 
 Here is an example that turns a proposition into an allow axiom:
 ```
 ./magma --prove:allow '{'protocol': 'TCP', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.20.0.0/15', 'destinationPort': '443'}' --direction Inbound
 ```
 
-This command appends the axiom into a file called recording/ALLOWED.txt
-
-If you make a mistake, simply edit ALLOWED.txt, remove the line, and restore the state (without the bogus line):
+If you make a mistake, simply edit recording/ALLOWED.txt, remove the line, and restore the state (without the bogus line):
 
 ```
 ./magma --cache:init --direction Inbound
@@ -190,7 +212,7 @@ If you make a mistake, simply edit ALLOWED.txt, remove the line, and restore the
 cache:init imports your NSGs from a local file (managed by magma) rather than directly from Azure: this is faster. You may use force:init if you prefer
 
 force:redo restores all allow axioms from recording/ALLOWED.txt without re-proving them, so it is very fast.
-In production, ALWAYS use prove:redo. It restores all allow axioms from recording/ALLOWED.txt by proving them first, but it is slighlty slower.
+In production, ALWAYS use prove:redo. It reads all allow axioms from recording/ALLOWED.txt by proving them first, but it is slighlty slower.
 
 If prove:redo cannot prove an axiom, it will explain why by printing all the counter examples which cannot be satisfied:
 ```
@@ -209,9 +231,9 @@ Here is an example that turns a proposition into a block axiom:
 ./magma --prove:block '{'protocol': 'TCP', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.20.0.0/15', 'destinationPort': '443'}' --direction Inbound
 ```
 
-This command appends the axiom into a file called recording/BLOCKED.txt
+This command store the axiom in memory cache and appends it to recording/BLOCKED.txt
 
-Here again, edit BLOCKED.txt if you make a mistake, then restore the state:
+Here again, edit recodring/BLOCKED.txt if you make a mistake, then restore the state:
 ```
 ./magma --cache:init --direction Inbound
 ./magma --force:redo --direction Inbound
@@ -226,7 +248,8 @@ Repeat the process until you've reviewed all the propositions (i.e. the list is 
 
 #### Split a proposition into its allow and block parts
 
-Copy the proposition from the previous listing, identify the parts, and save them as allow and block axioms
+Copy the proposition from the previous listing, identify the parts, and save them as allow and block axioms.
+
 
 In the following example, the proposition is split depending on the source address prefix: all ingress flows to TCP port 443 are allowed, except when coming from IP 10.10.0.0
 ```
@@ -248,7 +271,11 @@ Note that if you list propositions, this "split" rule will remain and the counte
 
 #### Backup the recording folder!
 
-When you are done, you are strongly advised to make a copy of the recording directory, this will save you the pain to start over the whole process should you erase ALLOWED.txt or BLOCKED.Txt by mistake
+When you are done, you are strongly advised to make a copy of the recording directory using ***backup:recording***, this will save you the pain to start over the whole process should you erase ALLOWED.txt or BLOCKED.txt by mistake
+
+```
+./magma --backup:recording --direction Inbound
+```
 
 ### Option 2: import axioms one by one
 
@@ -259,18 +286,41 @@ Initialize an empty cache:
 
 Note that, unlike cache:init or force:init, flushall doesn't fetch any actual NSG. After a flushall, your cache contains no axioms and no propositions.
 
+#### Start recording
+
+Storing your decisions on file will save you a lot of time if you need to edit axioms or
+start over.
+Use the **create:recording*** command to create ALLOWED.txt and BLOCKED.txt files in a subdirectory called recording:
+
+```
+./magma --create:recording --direction Inbound
+```
+
+#### Review each proposition one by one and add them to the proper axiom set
+
 For each proposition that you want to ***allow***, issue a prove:allow command
 ```
 ./magma --direction Inbound prove:allow '{"protocol": "TCP", "sourceAddressPrefix": "VirtualNetwork", "destinationAddressPrefix": "VirtualNetwork", "destinationPort": "100-200"}'
 ```
+
+This will save the axiom in cache memory and append it to ALLOWED.txt
 
 Likewise, for each proposition that you want to ***block***, issue a prove:block command
 ```
 ./magma --direction Inbound prove:block '{"protocol": "TCP", "sourceAddressPrefix": "VirtualNetwork", "destinationAddressPrefix": "VirtualNetwork", "destinationPort": "3389"}'
 ```
 
+This will save the axiom in cache memory and append it to BLOCKED.txt
+
 Rince and repeat until the list of propositions is empty.
 
+#### Backup the recording folder!
+
+When you are done, you are strongly advised to make a copy of the recording directory using ***backup:recording***, this will save you the pain to start over the whole process should you erase ALLOWED.txt or BLOCKED.txt by mistake
+
+```
+./magma --backup:recording --direction Inbound
+```
 
 ## What-if scenario
 
@@ -290,7 +340,7 @@ Run a regular cron job to check if the depoyed NSGs have drifted from the set of
 ```
 
 ## What's next?
-Refer to the documentation for detailed information on:
+Refer to [Magma documentation](https://labyrinthinesecurity.github.io/magma/index.html) for detailed information on:
 - the foundations (what is an axiom, a proposition, a Magma Quotient)
 - how Magma works behind the scene
 - how it compares with native Azure tools

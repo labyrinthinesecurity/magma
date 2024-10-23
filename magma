@@ -61,15 +61,28 @@ while [[ "$#" -gt 0 ]]; do
              usage
            fi
            ;;
-        --new:recording)
-          OP="new:recording"
+        --create:recording)
+          OP="create:recording"
            shift 1
            mkdir -p recording
            [ -f recording/ALLOWED.txt ] && mv recording/ALLOWED.txt recording/ALLOWED.bak
            [ -f recording/BLOCKED.txt ] && mv recording/BLOCKED.txt recording/BLOCKED.bak
            touch recording/ALLOWED.txt
            touch recording/BLOCKED.txt
+	   exit
            ;;
+        --backup:recording)
+	  OP="backup:recording"
+          [ -f recording/ALLOWED.txt ] && cp recording/ALLOWED.txt recording/ALLOWED.bak
+          [ -f recording/BLOCKED.txt ] && cp recording/BLOCKED.txt recording/BLOCKED.bak
+	  exit
+	  ;;
+        --restore:recording)
+          OP="restore:recording"
+          [ -f recording/ALLOWED.bak ] && cp recording/ALLOWED.bak recording/ALLOWED.txt
+          [ -f recording/BLOCKED.bak ] && cp recording/BLOCKED.bak recording/BLOCKED.txt
+          exit
+          ;;
 	--force:init)
 	   OP="force:init"
 	   shift 1
@@ -270,7 +283,7 @@ elif [[ "$OP" == "prove:redo" ]]; then
       fi
     done < recording/BLOCKED.tmp
     rm recording/BLOCKED.tmp
-elif [[ "$OP" == "new:recording" ]]; then
+elif [[ "$OP" == "backup:recording" ]]; then
     mkdir -p recording
     [ -f recording/ALLOWED.txt ] && mv recording/ALLOWED.txt recording/ALLOWED.bak
     [ -f recording/BLOCKED.txt ] && mv recording/BLOCKED.txt recording/BLOCKED.bak

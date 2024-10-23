@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Azure Magma reference guide</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
   <style>
-    body {
+    body,.menu {
       background-color: #13001f;
       color: #ffffff;
     }
@@ -15,7 +15,7 @@
     }
     th {
       background-color: #13001f;
-      color: #ffffff;
+      color: green;
     }
     td {
       background-color: #13001f;
@@ -24,38 +24,38 @@
 	strong {
 	  color: green;
 	}
+	.menu-list a {
+        color: green;
+		background-color: #13001f;
+    }
+	.custom-list li {
+            list-style: disc inside;
+			color: #ffffff;
+    }
   </style>
 </head>
-<body style="background-color: #13001f;">
-  <section class="section">
-    <div class="container">
-	  <h1 class="title has-text-white">Azure Magma concepts and definitions</h1>
-	  A <strong>proposition</strong> is a NSG security rule which is unproven: it is neither allowed, nor blocked.
-	  <br>An <strong>axiom</strong> is a NSG security rule which is proved as either allowed or denied.
-	</div>
-	<div class="container">
-	<br>Magma handles NSGs which are:
-	<ol>
-		<li> not default rules
-		<li> allowed
-		<li> inbound or outbound
-		<li> associated to an actual NIC or to an actual subnet
-	</ol><br>
-	All axioms (i.e. all proven security rules) are stored in a mathematical structure called a <i>Magma Quotient</i>. 
-	The Magma Quotient is a partition of the space of all proven security rules (the Magma), it's made of two equivalence classes.
-	Allowed rules are items of the allowed <i>equivalence class</i>. Blocked rules are members of the blocked <i>equivalence class</i>.
-	</div>
-  </section>
-  <section class="section">
+<body>
+ <aside class="menu">
+        <p class="menu-label">
+            Table of Contents
+        </p>
+        <ul class="menu-list">
+            <li><a href="#section1">Reference guide</a></li>
+			<li><a href="#section2">Single shot operations</a></li>
+            <li><a href="#section3">Day to day operations</a></li>
+        </ul>
+    </aside>
+  <section id="section1" class="section">
     <div class="container">
       <h1 class="title has-text-white">Azure Magma reference guide</h1>
-	  Flags shown in blue are mandatory. Flags shown in red are for testing only, don't use them in production.
+	  Flags shown in blue are mandatory. Flags shown in red are for testing only, don't use them in production!
+	  <p>&nbsp;</p>
       <table class="table is-bordered is-striped is-fullwidth">
         <thead>
           <tr>
-            <th>Flag</th>
-            <th>Arguments</th>
-            <th>Explanation</th>
+            <th><span class="has-text-success">Flag</span></th>
+            <th><span class="has-text-success">Arguments</span></th>
+            <th><span class="has-text-success">Explanation</span></th>
           </tr>
         </thead>
         <tbody>
@@ -106,7 +106,7 @@
           <tr>
             <td><button class="button is-success is-small is-focused">--prove:allow</button></td>
             <td>Proposition</td>
-            <td>Proves that a <strong>proposition</strong> is an <strong>allow axiom</strong>.
+            <td>Proves that a <strong>proposition</strong> is an <strong>allow axiom</strong>. Saves axiom in memory as well as in the recording (see create:recording below).
 			<br><i>Example: see force:allow</i>
 			</td>
           </tr>
@@ -120,7 +120,7 @@
           <tr>
             <td><button class="button is-success is-small is-focused">-prove:block</button></td>
             <td>Proposition</td>
-            <td>Proves that a <strong>proposition</strong> is a <strong>block axiom</strong>.
+            <td>Proves that a <strong>proposition</strong> is a <strong>block axiom</strong>. Saves axiom in memory as well as in the recording (see create:recording below).
 			<br><i>Example: see force:allow</i>
 			</td>
           </tr>
@@ -161,10 +161,42 @@
 			<br><i>Example: magma --compile --direction Inbound</i>
 			</td>
           </tr>
-	  
+
+            <td><button class="button is-success is-small is-focused">--create:recording</button></td>
+            <td>N/A</td>
+            <td>Creates ALLOWED.txt and BLOCKED.txt files in the <i>recording</i> local subdirectory, they will be used to persist a copy of axioms on hard drive.
+			<br><i>Example: magma --create:recording --direction Inbound</i>
+			</td>
+          </tr>
+          <tr>
+            <td><button class="button is-success is-small is-focused">--backup:recording</button></td>
+            <td>N/A</td>
+            <td>Makes a local copy (.bak) of ALLOWED.txt and BLOCKED.txt 
+			<br><i>Example: magma --backup:recording --direction Inbound</i>
+			</td>
+          </tr>	  
+		  <tr>
+            <td><button class="button is-success is-small is-focused">--restore:recording</button></td>
+            <td>N/A</td>
+            <td>Replaces ALLOWED.txt and BLOCKED.txt by their local copies (.bak) 
+			<br><i>Example: magma --restore:recording --direction Inbound</i>
+			</td>
+          </tr>	  
         </tbody>
       </table>
     </div>
   </section>
+  <section id="section2" class="section">
+    <div class="container">
+	  <h1 class="title has-text-white">Single shot operations</h1>
+	  TBC.
+	</div>
+  </section>
+   <section id="section3" class="section">
+    <div class="container">
+	  <h1 class="title has-text-white">Day to day operations</h1>
+	  TBC.
+	</div>
+  </section> 
 </body>
 </html>
