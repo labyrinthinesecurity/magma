@@ -32,6 +32,12 @@
             list-style: disc inside;
 			color: #ffffff;
     }
+	.code-box {
+    width: 200px;
+    max-height: none;
+    overflow-y: auto;
+    border-width: 2px;
+    }
   </style>
 </head>
 <body>
@@ -106,7 +112,7 @@
           <tr>
             <td><button class="button is-success is-small is-focused">--prove:allow</button></td>
             <td>Proposition</td>
-            <td>Proves that a <strong>proposition</strong> is an <strong>allow axiom</strong>. Saves axiom in memory as well as in the recording (see create:recording below).
+            <td>Proves that a <strong>proposition</strong> is an <strong>allow axiom</strong>. Saves axiom in memory as well as in the golden source (see create:source below).
 			<br><i>Example: see force:allow</i>
 			</td>
           </tr>
@@ -120,7 +126,7 @@
           <tr>
             <td><button class="button is-success is-small is-focused">-prove:block</button></td>
             <td>Proposition</td>
-            <td>Proves that a <strong>proposition</strong> is a <strong>block axiom</strong>. Saves axiom in memory as well as in the recording (see create:recording below).
+            <td>Proves that a <strong>proposition</strong> is a <strong>block axiom</strong>. Saves axiom in memory as well as in the golden source (see create:source below).
 			<br><i>Example: see force:allow</i>
 			</td>
           </tr>
@@ -162,26 +168,42 @@
 			</td>
           </tr>
 
-            <td><button class="button is-success is-small is-focused">--create:recording</button></td>
+            <td><button class="button is-success is-small is-focused">--create:source</button></td>
             <td>N/A</td>
-            <td>Creates ALLOWED.txt and BLOCKED.txt files in the <i>recording</i> local subdirectory, they will be used to persist a copy of axioms on hard drive.
-			<br><i>Example: magma --create:recording --direction Inbound</i>
+            <td>Creates ALLOWED.txt and BLOCKED.txt files in the <i>source</i> local subdirectory, they will be used to persist a golden source of axioms on hard drive.
+			<br><i>Example: magma --create:source --direction Inbound</i>
 			</td>
           </tr>
           <tr>
-            <td><button class="button is-success is-small is-focused">--backup:recording</button></td>
+            <td><button class="button is-success is-small is-focused">--backup:source</button></td>
             <td>N/A</td>
-            <td>Makes a local copy (.bak) of ALLOWED.txt and BLOCKED.txt 
-			<br><i>Example: magma --backup:recording --direction Inbound</i>
+            <td>Makes a local copy (.bak) of the golden source (ALLOWED.txt and BLOCKED.txt files) 
+			<br><i>Example: magma --backup:source --direction Inbound</i>
 			</td>
           </tr>	  
 		  <tr>
-            <td><button class="button is-success is-small is-focused">--restore:recording</button></td>
+            <td><button class="button is-success is-small is-focused">--restore:source</button></td>
             <td>N/A</td>
-            <td>Replaces ALLOWED.txt and BLOCKED.txt by their local copies (.bak) 
-			<br><i>Example: magma --restore:recording --direction Inbound</i>
+            <td>Replaces the latest version stored in the golden source (ALLOWED.txt and BLOCKED.txt) by their local copies (.bak) 
+			<br><i>Example: magma --restore:source --direction Inbound</i>
 			</td>
-          </tr>	  
+          </tr>	 
+
+
+         <tr>
+            <td><button class="button is-success is-small is-focused">--prove:redo</button></td>
+            <td>N/A</td>
+            <td>Replaces axioms from the latest version stored in the golden source, proving them to ensure consistency.
+			<br><i>Example: magma --prove:redo --direction Inbound</i>
+			</td>
+          </tr>
+          <tr>
+            <td><button class="button is-danger is-small is-focused">--force:redo</button></td>
+            <td>N/A</td>
+            <td>Replaces axioms from the latest version stored in the golden source without consistency check (DANGER!).
+			<br><i>Example: magma --force:redo --direction Inbound</i>
+			</td>
+          </tr>		  
         </tbody>
       </table>
     </div>
@@ -189,7 +211,26 @@
   <section id="section2" class="section">
     <div class="container">
 	  <h1 class="title has-text-white">Single shot operations</h1>
-	  TBC.
+	  <p>In this section, we describe initialization operations.</p><br>
+	  To install Magma and set environment variables, you please consult the README.md<br>
+	   <h2 class="title has-text-white is-size-4">Backfilling</h2>
+	   The following rule will import all your existing inbound NSGs as propositions into redis:
+	   <div class="notification is-small is-success">
+		 <pre>
+		magma --force:init --direction Inbound
+		123 rules imported
+          </pre>
+       </div>
+<br>Verify import by listing all propositions:
+		<div class="notification is-small is-success">
+		 <pre>
+         magma --list --direction Inbound
+		{"protocol": "TCP", "sourceAddressPrefix": "VirtualNetwork", "destinationAddressPrefix": "VirtualNetwork", "destinationPort": "443"}
+		...
+		{"protocol": "*", "sourceAddressPrefix": "10.0.0.0/8", "destinationAddressPrefix": "VirtualNetwork", "destinationPort": "22"}
+		total: 123
+		</pre>
+		</div>
 	</div>
   </section>
    <section id="section3" class="section">

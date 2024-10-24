@@ -173,14 +173,14 @@ resources
 | where associated
 ```
 
-#### Start recording
+#### Create a golden source
 
-Storing your decisions on file will save you a lot of time if you need to edit axioms or
-start over. 
-Use the **create:recording*** command to create ALLOWED.txt and BLOCKED.txt files in a subdirectory called recording:
+Storing your decisions on file will save you a lot of time if you need to edit axioms or start over. 
+
+Use the **create:source** command to create a golden source of allowed axioms (ALLOWED.txt) and blocked ones (BLOCKED.txt) in a subdirectory called **source**:
 
 ```
-./magma --create:recording --direction Inbound
+./magma --create:source --direction Inbound
 ```
 
 #### Review each proposition one by one
@@ -195,14 +195,14 @@ Inspect the rule and determine a status:
 
 Copy the proposition from the previous listing and paste it into a prove:allow or prove:block command.
 
-Unlike force:allow and force:block that we used before, prove:allow and prove:block don't break the Magma Quotient. What's more, it appends the new axiom not only in memory cache, but in the recording/ALLOWED.txt file
+Unlike force:allow and force:block that we used before, prove:allow and prove:block don't break the Magma Quotient. What's more, it appends the new axiom not only in memory cache, but in the source/ALLOWED.txt file
 
 Here is an example that turns a proposition into an allow axiom:
 ```
 ./magma --prove:allow '{'protocol': 'TCP', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.20.0.0/15', 'destinationPort': '443'}' --direction Inbound
 ```
 
-If you make a mistake, simply edit recording/ALLOWED.txt, remove the line, and restore the state (without the bogus line):
+If you make a mistake, simply edit source/ALLOWED.txt, remove the line, and restore the state (without the bogus line):
 
 ```
 ./magma --cache:init --direction Inbound
@@ -211,8 +211,8 @@ If you make a mistake, simply edit recording/ALLOWED.txt, remove the line, and r
 
 cache:init imports your NSGs from a local file (managed by magma) rather than directly from Azure: this is faster. You may use force:init if you prefer
 
-force:redo restores all allow axioms from recording/ALLOWED.txt without re-proving them, so it is very fast.
-In production, ALWAYS use prove:redo. It reads all allow axioms from recording/ALLOWED.txt by proving them first, but it is slighlty slower.
+force:redo restores the golden source without re-proving each individual axiom, so it is very fast.
+In production, ALWAYS use prove:redo. It restores axioms, proving them first.
 
 If prove:redo cannot prove an axiom, it will explain why by printing all the counter examples which cannot be satisfied:
 ```
@@ -231,9 +231,9 @@ Here is an example that turns a proposition into a block axiom:
 ./magma --prove:block '{'protocol': 'TCP', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.20.0.0/15', 'destinationPort': '443'}' --direction Inbound
 ```
 
-This command store the axiom in memory cache and appends it to recording/BLOCKED.txt
+This command store the axiom in memory cache and appends it to the golden source source/BLOCKED.txt
 
-Here again, edit recodring/BLOCKED.txt if you make a mistake, then restore the state:
+Here again, edit source/BLOCKED.txt if you make a mistake, then restore the golden source to its new state:
 ```
 ./magma --cache:init --direction Inbound
 ./magma --force:redo --direction Inbound
@@ -269,12 +269,12 @@ If you make an error, proceed as explained before: edit ALLOWED.txt or BLOCKED.t
 
 Note that if you list propositions, this "split" rule will remain and the counter won't decrease. That's because NSG owners MUST modify their NSGs to align with the allow axiom. Only when all owners have updated their NSG will the proposition vanish from the list.
 
-#### Backup the recording folder!
+#### Backup the golden source!
 
-When you are done, you are strongly advised to make a copy of the recording directory using ***backup:recording***, this will save you the pain to start over the whole process should you erase ALLOWED.txt or BLOCKED.txt by mistake
+When you are done, you are strongly advised to make a copy of the **source** directory using ***backup:source***, this will save you the pain to start over the whole process should you erase ALLOWED.txt or BLOCKED.txt by mistake
 
 ```
-./magma --backup:recording --direction Inbound
+./magma --backup:source --direction Inbound
 ```
 
 ### Option 2: import axioms one by one
@@ -286,14 +286,13 @@ Initialize an empty cache:
 
 Note that, unlike cache:init or force:init, flushall doesn't fetch any actual NSG. After a flushall, your cache contains no axioms and no propositions.
 
-#### Start recording
+#### Create golden source 
 
-Storing your decisions on file will save you a lot of time if you need to edit axioms or
-start over.
-Use the **create:recording*** command to create ALLOWED.txt and BLOCKED.txt files in a subdirectory called recording:
+Storing your decisions as a golden source on file will save you a lot of time if you need to edit axioms or start over.
+Use the **create:source*** command to create ALLOWED.txt and BLOCKED.txt files in a subdirectory called **source**:
 
 ```
-./magma --create:recording --direction Inbound
+./magma --create:source --direction Inbound
 ```
 
 #### Review each proposition one by one and add them to the proper axiom set
@@ -314,12 +313,12 @@ This will save the axiom in cache memory and append it to BLOCKED.txt
 
 Rince and repeat until the list of propositions is empty.
 
-#### Backup the recording folder!
+#### Backup the golden source!
 
-When you are done, you are strongly advised to make a copy of the recording directory using ***backup:recording***, this will save you the pain to start over the whole process should you erase ALLOWED.txt or BLOCKED.txt by mistake
+When you are done, you are strongly advised to make a copy of the golden source using ***backup:source***, this will save you the pain to start over the whole process should you erase ALLOWED.txt or BLOCKED.txt by mistake
 
 ```
-./magma --backup:recording --direction Inbound
+./magma --backup:source --direction Inbound
 ```
 
 ## What-if scenario
@@ -334,7 +333,7 @@ Currently, whatIf only works for allow axioms, not for block axioms.
 
 ## Drift scenario
 
-Run a regular cron job to check if the depoyed NSGs have drifted from the set of allow and block axioms stored in cache (also stored in the recording directory)
+Run a regular cron job to check if the depoyed NSGs have drifted from the set of allow and block axioms stored in cache (also stored in the golden source)
 ```
 ./magma --drift --direction Inbound
 ```

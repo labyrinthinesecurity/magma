@@ -61,26 +61,26 @@ while [[ "$#" -gt 0 ]]; do
              usage
            fi
            ;;
-        --create:recording)
-          OP="create:recording"
+        --create:source)
+          OP="create:source"
            shift 1
-           mkdir -p recording
-           [ -f recording/ALLOWED.txt ] && mv recording/ALLOWED.txt recording/ALLOWED.bak
-           [ -f recording/BLOCKED.txt ] && mv recording/BLOCKED.txt recording/BLOCKED.bak
-           touch recording/ALLOWED.txt
-           touch recording/BLOCKED.txt
+           mkdir -p source
+           [ -f source/ALLOWED.txt ] && mv source/ALLOWED.txt source/ALLOWED.bak
+           [ -f source/BLOCKED.txt ] && mv source/BLOCKED.txt source/BLOCKED.bak
+           touch source/ALLOWED.txt
+           touch source/BLOCKED.txt
 	   exit
            ;;
-        --backup:recording)
-	  OP="backup:recording"
-          [ -f recording/ALLOWED.txt ] && cp recording/ALLOWED.txt recording/ALLOWED.bak
-          [ -f recording/BLOCKED.txt ] && cp recording/BLOCKED.txt recording/BLOCKED.bak
+        --backup:source)
+	  OP="backup:source"
+          [ -f source/ALLOWED.txt ] && cp source/ALLOWED.txt source/ALLOWED.bak
+          [ -f source/BLOCKED.txt ] && cp source/BLOCKED.txt source/BLOCKED.bak
 	  exit
 	  ;;
-        --restore:recording)
-          OP="restore:recording"
-          [ -f recording/ALLOWED.bak ] && cp recording/ALLOWED.bak recording/ALLOWED.txt
-          [ -f recording/BLOCKED.bak ] && cp recording/BLOCKED.bak recording/BLOCKED.txt
+        --restore:source)
+          OP="restore:source"
+          [ -f source/ALLOWED.bak ] && cp source/ALLOWED.bak source/ALLOWED.txt
+          [ -f source/BLOCKED.bak ] && cp source/BLOCKED.bak source/BLOCKED.txt
           exit
           ;;
 	--force:init)
@@ -143,7 +143,7 @@ while [[ "$#" -gt 0 ]]; do
            fi
            ;;
         --prove:allow)
-           if [ ! -d recording ]; then
+           if [ ! -d source ]; then
              echo "Error: please force:init or cache:init first"
              exit -1
            fi
@@ -157,7 +157,7 @@ while [[ "$#" -gt 0 ]]; do
            fi
            ;;
         --prove:block)
-           if [ ! -d recording ]; then
+           if [ ! -d source ]; then
              echo "Error: please force:init or cache:init first"
              exit -1
            fi
@@ -255,38 +255,38 @@ elif [[ "$OP" == "flushall" ]]; then
 elif [[ "$OP" == "flush" ]]; then
     python3 ./blade.py --db $DB --flush --direction "$DIRECTION" # flush redis propositions only
 elif [[ "$OP" == "force:redo" ]]; then
-    python3 ./blade.py --db $DB --redo --direction "$DIRECTION" # flush redis and load axioms from recording/ALLOWED.txt and recording/BLOCKED.txt without proof
+    python3 ./blade.py --db $DB --redo --direction "$DIRECTION" # flush redis and load axioms from source/ALLOWED.txt and source/BLOCKED.txt without proof
 elif [[ "$OP" == "prove:redo" ]]; then 
-    mv recording/ALLOWED.txt recording/ALLOWED.tmp
-    touch recording/ALLOWED.txt
+    mv source/ALLOWED.txt source/ALLOWED.tmp
+    touch source/ALLOWED.txt
     while IFS= read -r line
     do
       echo $line
       ./magma --direction Inbound --prove:allow "$line"
       if [ $? -ne 0 ]; then
         echo "FATAL: cannot prove allow axiom $line"
-	mv recording/ALLOWED.tmp recording/ALLOWED.txt
+	mv source/ALLOWED.tmp source/ALLOWED.txt
 	exit -1
       fi
-    done < recording/ALLOWED.tmp
-    rm recording/ALLOWED.tmp
-    mv recording/BLOCKED.txt recording/BLOCKED.tmp
-    touch recording/BLOCKED.txt
+    done < source/ALLOWED.tmp
+    rm source/ALLOWED.tmp
+    mv source/BLOCKED.txt source/BLOCKED.tmp
+    touch source/BLOCKED.txt
     while IFS= read -r line
     do
       echo $line
       ./magma --direction Inbound --prove:block "$line"
       if [ $? -ne 0 ]; then
         echo "FATAL: cannot prove block axiom: $line"
-	mv recording/BLOCKED.tmp recording/BLOCKED.txt
+	mv source/BLOCKED.tmp source/BLOCKED.txt
 	exit -1
       fi
-    done < recording/BLOCKED.tmp
-    rm recording/BLOCKED.tmp
-elif [[ "$OP" == "backup:recording" ]]; then
-    mkdir -p recording
-    [ -f recording/ALLOWED.txt ] && mv recording/ALLOWED.txt recording/ALLOWED.bak
-    [ -f recording/BLOCKED.txt ] && mv recording/BLOCKED.txt recording/BLOCKED.bak
-    touch recording/ALLOWED.txt
-    touch recording/BLOCKED.txt
+    done < source/BLOCKED.tmp
+    rm source/BLOCKED.tmp
+elif [[ "$OP" == "backup:source" ]]; then
+    mkdir -p source
+    [ -f source/ALLOWED.txt ] && mv source/ALLOWED.txt source/ALLOWED.bak
+    [ -f source/BLOCKED.txt ] && mv source/BLOCKED.txt source/BLOCKED.bak
+    touch source/ALLOWED.txt
+    touch source/BLOCKED.txt
 fi

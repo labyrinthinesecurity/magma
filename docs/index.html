@@ -42,8 +42,23 @@
       </h1>
       <center><img src="../magma.png"></center>
       <p class="">
-        A Magma is one of the simplests structure one can imagine: it's a set equiped with an operation.
-	    We use it to store Azure <strong>Network Security Groups (NSGs)</Strong> of a whole organization to reason about their security at scale and automatically.
+        A Magma is one of the simplests structure one can imagine: it's a simply set equiped with an operation.
+	    We use it to store Azure <strong>Network Security Groups (NSGs)</strong> of a whole organization to reason about their security at scale and automatically.
+      </p>
+	  <br>
+	  <p class="">
+        Technically, Azure Magma holds the security rules of your NSGs in the form of hyperrectangles (rectangles in a 4D space made of protocols, source IPs, destination IPs, and destination port)
+		The operation acting on hyperrectangles is the union operation, denoted '+'. Thus, a NSG can be thought of as an addition of many hyperrectangles.
+      </p>
+	  <br>
+	  <p class="">
+        <p>The Magma is partitioned into two equivalence classes, called <strong>allow</strong> and <strong>block</strong>. The resulting partition is a Maqma Quotient.</p><br>
+		The ONE single principle to understand for scalability is that all security rules belonging to the same class are equivalent:<br>
+		Suppose a security rule allows flows from 'VirtualNetwork' to '*' on port 80 in a NSG implemented in subscription A, and that another rule allows flows from '10.0.0.0/8' to '10.10.0.0/16' on port 443 in 
+		a NSG implemented in subscription B.<br>
+		=======> <i>For Magma, both security rules will be the equivalent!</i>
+		<br>
+		<p><br>That's why it is critically important to scope Azure Magma to similar subscriptions, using proper management groups.</p>
       </p>
 	  <br>
 	  <p>Please consult the <a href="reference.html">reference guide</a> for detailed operations.</p>
@@ -52,6 +67,7 @@
   <section id="section1" class="section">
     <div class="container">
 	  <h1 class="title has-text-white">Azure Magma concepts and definitions</h1>
+	  Azure Magma is currently in <strong>preview</strong>.<br>
 	  A <strong>proposition</strong> is an unproven NSG security rule: it is neither allowed, nor blocked (denied).
 	  <br>An <strong>axiom</strong> is a proven NSG security rule: it is either allowed, or blocked.
 	</div>
@@ -71,23 +87,54 @@
 	<p>For Magma to behave as expected, all denied custom rules must be removed from NSGs except one: a <strong>catch-all deny</strong> rule with lowest priority.
 	This rule will be implicitly assumed by Magma, it's up to you to verify it is systematically enforced in all your NSGs.
 	</p><br>
-	<p>Axioms (i.e. all proven security rules) are stored in a mathematical structure called a <i>Magma Quotient</i>. 
-	The Magma Quotient is a partition of the space of all proven security rules (the Magma), it's made of two equivalence classes, and one operation: <i>addition</i>.
+	<p>Axioms (i.e. all proven security rules) are stored in the <i>Magma Quotient</i>. 
+	As we explained, the Magma Quotient is a partition of the space of all proven security rules (the Magma), it's made of two equivalence classes, and one operation: <i>addition</i>.
 	Allowed rules are members of the <i>"allowed" equivalence class</i>. Blocked rules are members of the <i>"blocked" equivalence class</i>.
 	Security rules are additive, and the addition is congruent. This is the key property that we maintain at all times, not to break consistency of the Magma Quotient.
 	</p><br>
-	<p> Why do we need a "blocked" equivalence class if we don't handle denied rules? That's because we want to <i>review</i> every single security rule in allowed state in Azure.
+	<p> Why do we need a "blocked" equivalence class if we don't handle denied rules? 
+	<br>That's because we want to <i>review</i> every single security rule in allowed state in Azure.
 	<ol class="custom-list">
 	<li>allowed and <span class="has-text-success">valid</span> rules are meant to belong the allowed equivalence class</li>
 	<li>allowed and <span class="has-text-danger">invalid</span> rules are meant to belong the blocked equivalence class</li>
 	</ol><br>
 	</p>
 	<br>
-	<p>Why do we need a blocked equivalence class if we have a catch-all deny rule? 
-	Blocked axioms are absolutely essential for automation. By reasoning using both allowed and blocked axioms, Magma can streamline the unsupervised classification of new 
-	security rules, and breaks them down efficiently. In the end of the day, this is what makes human review scalable.
+	<p>Why do we need a blocked equivalence class if we have a catch-all deny rule?<br> 
+	Blocked axioms are absolutely essential for automation: by reasoning using both allowed and blocked axioms, Magma can streamline the unsupervised classification of new 
+	security rules, and can break them down efficiently into their axioms and unknown coponents. Ultimately, this is what makes human review scalable.<br>
+	Blocked axioms, however, must be limited to the bare necessities. The widest their span, the highest the risk of overlapping with allowed axioms which should take precedence.
+	</p>
+	<p>Why should we do with our blocked axioms?<br>
+	Those are the sign that some allowed security rules in local NSGs are misconfigured. Teams in charge of modifying NSGs should refactor the offending allowed 
+	security rules so that they dont overlap with block axioms.
+    <br>
+	Magma is very helpful for that, because it explains the overlapping/conflicting ranges.
+	</p>
 	</div>
   </section>
+  <section id="section2" class="section">
+    <div class="container">
+	  <h1 class="title has-text-white">Known limitations</h1>	
+		In the Preview, we don't support:
+		<ol class="custom-list">
+		<li>Azure network security tags in wildcards. A source address prefix like '*' will not include tags like 'VirtualNetwork', for example. You will need to add an extra explicit axiom for each tag of interest</li>
+		<li>Application Security groups</li>
+		</ol>
+<br>
+	    Other longer-term unsupported features:
+		<ol class="custom-list">
+		<li>Denies in security rules. Because Magma doesn't manage rule priorities, if some of your custom rules feature denies with a higher priority than allows, it will wreak havoc into the logic</li>
+		<li>If you are using Azure managed VNets, security admin rules are not supported by Magma</li>
+		</ol>
+	</div>
+  </section>
+  <section id="section3" class="section">
+    <div class="container">
+  <h1 class="title has-text-white">Resources</h1>
+   All operations are carried out using the Magma CLI, which is <a href="https://labyrinthinesecurity.github.io/magma/reference.html">documented here</a>.<br>
+   The theoretical foundations of Magma were originally articulated in <a href="https://www.linkedin.com/pulse/introducing-azure-magma-christophe-parisel/">my newsletter</a>.<br>
+   The groundbreaking 2016 research paper introducing secGuru is available on <a href="https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/secguru.pdf">Microsoft Research web site</a>.
 </body>
 </html>
 

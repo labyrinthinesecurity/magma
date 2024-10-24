@@ -16,10 +16,10 @@ def delete_db(scope):
       r.srem(scope,member)
 
 def manage_magma(atag):
-  global nrules,tag,closedRules,openRules
+  global nrules,tag,allowedRules,blockedRules
   global ClosedRules,ClosedPredicates,OpenRules,OpenPredicates
   magma=[True]
-  if atag not in ['closed','open']:
+  if atag not in ['allowed','blocked']:
     print(f"unknown tag {tag}")
     sys.exit()
   tag=atag
@@ -31,10 +31,10 @@ def manage_magma(atag):
     yacc.parse(s)
     cntRules=nrules
     #print(f"{tag} predicates (axioms):",nrules)
-    if tag=='closed':
+    if tag=='allowed':
       Rules=sortRules(ClosedRules,ClosedPredicates)
       Predicates=ClosedPredicates
-    elif tag=='open':
+    elif tag=='blocked':
       Rules=sortRules(OpenRules,OpenPredicates)
       Predicates=OpenPredicates
     magma=Bool('magma')
@@ -209,10 +209,10 @@ def p_item(p):
     Porthighs[nrules]=phi
     Protolows[nrules]=protolo
     Protohighs[nrules]=protohi
-    if tag=="closed":
+    if tag=="allowed":
       Predicates=ClosedPredicates
       Rules=ClosedRules
-    elif tag=="open":
+    elif tag=="blocked":
       Predicates=OpenPredicates
       Rules=OpenRules
     elif tag=="singleRule":
@@ -1054,14 +1054,14 @@ def ALLBVSAT(Z3proposition,magma,operation):
 
 def intersect(proposition,partition):
   global ClosedRules,ClosedPredicates,OpenRules,OpenPredicates
-  global nrules,closedRules,openRules,s,tag,magma
+  global nrules,allowedRules,blockedRules,s,tag,magma
   before=manage_magma(partition)
-  if partition=='closed':
-    cntRules=closedRules
+  if partition=='allowed':
+    cntRules=allowedRules
     Predicates=ClosedPredicates
     Rules=ClosedRules
-  elif partition=='open':
-    cntRules=openRules
+  elif partition=='blocked':
+    cntRules=blockedRules
     Predicates=OpenPredicates
     Rules=OpenRules
   else:
@@ -1099,7 +1099,7 @@ def intersect(proposition,partition):
 
 
 def prove(aproposition,quotient):
-  global OpenPredicates,ClosedPredicates,OpenRules,ClosedRules,Rules,openRules,closedRules,magma_open,magma_closed
+  global OpenPredicates,ClosedPredicates,OpenRules,ClosedRules,Rules,blockedRules,allowedRules,magma_blocked,magma_allowed
   mode='commit'
   if not aproposition:
     mode='search'
@@ -1114,8 +1114,8 @@ def prove(aproposition,quotient):
     ClosedRules=[]
     OpenRules=[]
     Rules=[]
-    openRules=0
-    closedRules=0
+    blockedRules=0
+    allowedRules=0
     for i in range(0,PREDICATES_CAP):
       OpenPredicates[i]=True
     for i in range(0,PREDICATES_CAP):
@@ -1123,11 +1123,11 @@ def prove(aproposition,quotient):
     SingleRulePredicate[0]=True
     cnt+=1
     print(f"PROPOSITION {cnt}",proposition)
-    intc,magma_closed,Z3proposition=intersect(proposition,'closed')
-    into,magma_open,Z3proposition=intersect(proposition,'open')
-    if (quotient=='allow' or quotient=='closed') and aproposition:
+    intc,magma_allowed,Z3proposition=intersect(proposition,'allowed')
+    into,magma_blocked,Z3proposition=intersect(proposition,'blocked')
+    if quotient=='allowed' and aproposition:
       recfile='ALLOWED.txt'
-    elif (quotient=='block' or quotient=='open')  and aproposition:
+    elif quotient=='blocked' and aproposition:
       recfile='BLOCKED.txt'
     else:
       recfile=None
@@ -1137,24 +1137,24 @@ def prove(aproposition,quotient):
         print("PROVED")
         r.srem('unknown',proposition)
         r.sadd(quotient,proposition)
-        if recfile is not None and os.path.isdir("recording") and os.path.isfile(f"recording/{recfile}"):
-          with open(f"recording/{recfile}","a") as f:
+        if recfile is not None and os.path.isdir("source") and os.path.isfile(f"source/{recfile}"):
+          with open(f"source/{recfile}","a") as f:
             f.write(aproposition+"\n")
         sys.exit(0)
       continue
     if intc==sat and into==unsat:
-      print(f"  proposition {cnt} intersects only the closed class")
-      if mode=='commit' and (quotient=='allow' or quotient=='closed'):
+      print(f"  proposition {cnt} intersects only the allowed class")
+      if mode=='commit' and quotient=='allowed':
         print("PROVED")
         r.srem('unknown',proposition)
         r.sadd(quotient,proposition)
-        if recfile is not None and os.path.isdir("recording") and os.path.isfile(f"recording/{recfile}"):
-          with open(f"recording/{recfile}","a") as f:
+        if recfile is not None and os.path.isdir("source") and os.path.isfile(f"source/{recfile}"):
+          with open(f"source/{recfile}","a") as f:
             f.write(aproposition+"\n")
         sys.exit(0)
-      elif mode=='commit' and (quotient!='allow' and quotient!='closed'):
+      elif mode=='commit' and quotient!='allowed':
         print("NOT proved")
-        postanswer,ccpost=ALLBVSAT(Z3proposition,magma_closed,'counterexample')
+        postanswer,ccpost=ALLBVSAT(Z3proposition,magma_allowed,'counterexample')
         if (postanswer==unsat):
           if ccpost is not None:
             if len(ccpost)>0:
@@ -1162,7 +1162,7 @@ def prove(aproposition,quotient):
               for ac in ccpost:
                 print("    ",ac)
         sys.exit(-1)
-      postanswer,ccpost=ALLBVSAT(Z3proposition,magma_closed,'standard')
+      postanswer,ccpost=ALLBVSAT(Z3proposition,magma_allowed,'standard')
       if (postanswer==unsat):
         if ccpost is not None:
           r.srem('unknown',proposition)
@@ -1174,18 +1174,18 @@ def prove(aproposition,quotient):
         else:
           print("  *** nothing new under the sun")
     elif intc==unsat and into==sat:
-      print(f"  proposition {cnt} intersects only the open class")
-      if mode=='commit' and (quotient=='block' or quotient=='open'):
+      print(f"  proposition {cnt} intersects only the blocked class")
+      if mode=='commit' and quotient=='blocked':
         print("PROVED")
         r.srem('unknown',proposition)
         r.sadd(quotient,proposition)
-        if recfile is not None and os.path.isdir("recording") and os.path.isfile(f"recording/{recfile}"):
-          with open(f"recording/{recfile}","a") as f:
+        if recfile is not None and os.path.isdir("source") and os.path.isfile(f"source/{recfile}"):
+          with open(f"source/{recfile}","a") as f:
             f.write(aproposition+"\n")
         sys.exit(0)
-      elif mode=='commit' and (quotient!='block' and quotient!='open'):
+      elif mode=='commit' and quotient!='blocked':
         print("NOT proved")
-        postanswer,ccpost=ALLBVSAT(Z3proposition,magma_open,'counterexample')
+        postanswer,ccpost=ALLBVSAT(Z3proposition,magma_blocked,'counterexample')
         if (postanswer==unsat):
           if ccpost is not None:
             if len(ccpost)>0:
@@ -1193,7 +1193,7 @@ def prove(aproposition,quotient):
               for ac in ccpost:
                 print("    ",ac)
         sys.exit(-1)
-      postanswer,ccpost=ALLBVSAT(Z3proposition,magma_open,'standard')
+      postanswer,ccpost=ALLBVSAT(Z3proposition,magma_blocked,'standard')
       if (postanswer==unsat):
         if ccpost is not None:
           r.srem('unknown',proposition)
@@ -1208,7 +1208,7 @@ def prove(aproposition,quotient):
       print(f"  proposition {cnt} intersects both classes")
       if mode=='commit':
         print('NOT proved')
-        postanswer,ccpost=ALLBVSAT(Z3proposition,Or(magma_closed,magma_open),'counterexample')
+        postanswer,ccpost=ALLBVSAT(Z3proposition,Or(magma_allowed,magma_blocked),'counterexample')
         if (postanswer==unsat):
           if ccpost is not None:
             if len(ccpost)>0:
@@ -1216,7 +1216,7 @@ def prove(aproposition,quotient):
               for ac in ccpost:
                 print("    ",ac)
         sys.exit(-1)
-      postanswer,ccpost=ALLBVSAT(Z3proposition,Or(magma_closed,magma_open),'standard')
+      postanswer,ccpost=ALLBVSAT(Z3proposition,Or(magma_allowed,magma_blocked),'standard')
       if (postanswer==unsat):
         if ccpost is not None:
           r.srem('unknown',proposition)
@@ -1250,18 +1250,18 @@ log = logging.getLogger()
 r = redis.StrictRedis(host='localhost', port=6379, db=DB)
 tags=r.smembers("tags")
 
-openRules=0
-closedRules=0
+blockedRules=0
+allowedRules=0
 CAP=65536
 PREDICATES_CAP=10000
 h1=256
 h2=h1*h1
 h3=h2*h1
 
-OpenPredicates=BoolVector('openpredicates',PREDICATES_CAP)
+OpenPredicates=BoolVector('blockedpredicates',PREDICATES_CAP)
 for i in range(0,PREDICATES_CAP):
   OpenPredicates[i]=True
-ClosedPredicates=BoolVector('closedpredicates',PREDICATES_CAP)
+ClosedPredicates=BoolVector('allowedpredicates',PREDICATES_CAP)
 for i in range(0,PREDICATES_CAP):
   ClosedPredicates[i]=True
 SingleRulePredicate=BoolVector('singleRulePredicate',2)
@@ -1335,14 +1335,14 @@ t_SLASH   = r'\/'
 t_DOT     = r'\.'
 t_ignore = ' \t\"\'' # Ignored characters
 
-magma_closed=None
-magma_open=None
+magma_allowed=None
+magma_blocked=None
 
 if OP=='whatIf' or OP=='prove':
   prove(None,None)
 elif OP=='drift':
   prove(None,None)
 elif OP=='prove:allow' and args.proposition:
-  prove(args.proposition,'closed')
+  prove(args.proposition,'allowed')
 elif OP=='prove:block' and args.proposition:
-  prove(args.proposition,'open')
+  prove(args.proposition,'blocked')

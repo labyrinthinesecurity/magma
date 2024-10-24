@@ -8,7 +8,7 @@ parser.add_argument("--op", required=False, choices=['add','retag','show','init'
 parser.add_argument("--direction", required=True, choices=['Inbound','Outbound'], help="Inbound|Outbound")
 parser.add_argument("--flushall", required=False, action="store_true",help="flush redis axioms and propositions")
 parser.add_argument("--flush", required=False, action="store_true",help="flush redis propositions only")
-parser.add_argument("--redo", required=False, action="store_true",help="reload exioms from last recording")
+parser.add_argument("--redo", required=False, action="store_true",help="reload exioms from last golden source version")
 args = parser.parse_args()
 
 DB=args.db
@@ -21,8 +21,8 @@ elif args.op=="asof":
   sfile=f"normalized.asof.{DIR}.json"
 
 r = redis.StrictRedis(host='localhost', port=6379, db=DB)
-r.sadd("tags","closed")
-r.sadd("tags","open")
+r.sadd("tags","allowed")
+r.sadd("tags","blocked")
 tags=r.smembers("tags")
 
 def delete_db(scope):
@@ -43,27 +43,27 @@ if args.flush:
   print(f"{DIR} propositions flushed")
   sys.exit()
 
-closed0=r.smembers("closed")
+allowed0=r.smembers("allowed")
 if OP=='show':
   print(" ")
-  if len(closed0)>0:
-    print("begin axioms (closed partition)")
-    for aC in closed0:
+  if len(allowed0)>0:
+    print("begin axioms (allowed partition)")
+    for aC in allowed0:
       print("  ",aC.decode('UTF-8'))
-    print("end axiomms (closed partition)")
+    print("end axiomms (allowed partition)")
   else:
-    print("no axioms in closed partition")
+    print("no axioms in allowed partition")
 
-open0=r.smembers("open")
+blocked0=r.smembers("blocked")
 if OP=='show':
   print(" ")
-  if len(open0)>0:
-    print("begin axioms (open partition)")
-    for aC in open0:
+  if len(blocked0)>0:
+    print("begin axioms (blocked partition)")
+    for aC in blocked0:
       print("  ",aC.decode('UTF-8'))
-    print("end axioms (open partition)")
+    print("end axioms (blocked partition)")
   else:
-    print("no axioms in open partition")
+    print("no axioms in blocked partition")
 
 uk0=r.smembers("unknown")
 if OP=='show':
@@ -135,7 +135,7 @@ def retagRule():
     bwhich=bytes(which,'UTF-8')
     if len(which)>0:
       print("which",which,"tags",tags)
-      if which in ['closed','open','unknown']:
+      if which in ['allowed','blocked','unknown']:
         rez=r.sadd(which,rule)
         if rez==1:
           decide=True
@@ -170,7 +170,7 @@ def addRule():
     bwhich=bytes(which,'UTF-8')
 #    print(bwhich,tags)
     if len(which)>0:
-      if which in ['open','closed','unknown']:
+      if which in ['blocked','allowed','unknown']:
         rez=r.sadd(which,rule)
         if rez==1:
           decide=True
@@ -187,17 +187,17 @@ def importRules(what):
   elif what=='propositions':
     what=='unknown' 
     delete_db(what)
-  elif what=='closed':
+  elif what=='allowed':
     delete_db('all')
   with open(sfile,'r') as f:
     ns=json.load(f)
   cnt=0
   for an in ns:
     ans=json.dumps(an)
-    if r.sismember('closed',ans):
-      print("ignoring rule, already a closed axiom",ans)
-    elif r.sismember('open',ans):
-      print("ignoring rule, already an open axiom",ans)
+    if r.sismember('allowed',ans):
+      print("ignoring rule, already a allowed axiom",ans)
+    elif r.sismember('blocked',ans):
+      print("ignoring rule, already an blocked axiom",ans)
     else:
       cnt+=1
       rez=r.sadd(what,ans)
@@ -208,7 +208,7 @@ def importRules(what):
 
 def reloadRules():
   print("RELOADING...")
-  with open('recording/ALLOWED.txt','r') as f:
+  with open('source/ALLOWED.txt','r') as f:
     ll = [line.strip() for line in f]
   ns=[]
   for l in ll:
@@ -217,18 +217,18 @@ def reloadRules():
   cnt=0
   for an in ns:
     ans=json.dumps(an)
-    if r.sismember('closed',ans):
-      print("ignoring rule, already a closed axiom",ans)
+    if r.sismember('allowed',ans):
+      print("ignoring rule, already a allowed axiom",ans)
     else:
       cnt+=1
-      rez=r.sadd('closed',ans)
+      rez=r.sadd('allowed',ans)
       if rez!=1:
         print("error cannot load rule",ans)
         sys.exit()
       if r.sismember('unknown',ans):
         r.srem('unknown',ans)
-  print(f"{cnt} rules loaded as closed axioms")
-  with open('recording/BLOCKED.txt','r') as f:
+  print(f"{cnt} rules loaded as allowed axioms")
+  with open('source/BLOCKED.txt','r') as f:
     ll = [line.strip() for line in f]
   ns=[]
   for l in ll:
@@ -237,17 +237,17 @@ def reloadRules():
   cnt=0
   for an in ns:
     ans=json.dumps(an)
-    if r.sismember('open',ans):
-      print("ignoring rule, already an open axiom",ans)
+    if r.sismember('blocked',ans):
+      print("ignoring rule, already an blocked axiom",ans)
     else:
       cnt+=1
-      rez=r.sadd('open',ans)
+      rez=r.sadd('blocked',ans)
       if rez!=1:
         print("error cannot load rule",ans)
         sys.exit()
       if r.sismember('unknown',ans):
         r.srem('unknown',ans)
-  print(f"{cnt} rules loaded as open axioms")
+  print(f"{cnt} rules loaded as blocked axioms")
 
 
 def listRules(tag):
@@ -271,6 +271,6 @@ elif OP=='asof':
   delete_db('unknown')
   importRules('unknown')
 elif args.redo:
-  delete_db('closed')
-  delete_db('open')
+  delete_db('allowed')
+  delete_db('blocked')
   reloadRules()
