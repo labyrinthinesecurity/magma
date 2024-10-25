@@ -114,16 +114,16 @@ the following proposition(s) must be proved:
 total: 1
 ```
 
-Compile. This will break down the proposition into the smallest possible fragments, called ***passlets***, that are actually unproven. 
+Compile. This will break down the proposition into the largest possible ***hyperrectangles*** that are actually unproven. 
 ```
 ./magma --compile --direction Inbound
 
-  proposition replaced by the following passlets
+  proposition replaced by the following hyperrectangluar propositions: 
     {'protocol': '0', 'sourceAddressPrefix': '0.0.0.1-255.255.255.254', 'destinationAddressPrefix': '10.22.0.16-10.23.255.255', 'destinationPort': '443'}
     {'protocol': '0', 'sourceAddressPrefix': '0.0.0.1-255.255.255.254', 'destinationAddressPrefix': '10.22.0.0-10.22.0.11', 'destinationPort': '443'}
     {'protocol': '0', 'sourceAddressPrefix': '0.0.0.1-255.255.255.254', 'destinationAddressPrefix': '10.16.0.0-10.19.255.255', 'destinationPort': '443'}
 ```
-In the above example, the initial proposition was broken down into 3 passlets.
+In the above example, the initial proposition was broken down into 3 hyperrectangles.
 
 
 The next section explains how to backfill your existing NSGs into Magma.
@@ -171,6 +171,7 @@ resources
 | mv-expand subs = properties.subnets
 | extend associated = isnotnull(nics) or isnotnull(subs)
 | where associated
+| distinct rule
 ```
 
 #### Create a golden source

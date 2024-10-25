@@ -144,8 +144,6 @@ def normalizeNSG(aN,ruleset,debug):
     print(aNR) 
   return ruleset
 
-NSGtags={}
-NSGruleset={}
 ruleset=[]
 
 with open(sfile,'r') as data_file:
@@ -153,49 +151,6 @@ with open(sfile,'r') as data_file:
 
 for aN in nsg_data:
   ruleset=normalizeNSG(aN,ruleset,False)
-  for aR in ruleset:
-    (found,tag)=findRule(str(aR))
-    if found:
-#      print("... ",aR,tag)
-      if aN['id'] in NSGtags:
-        NSGtags[aN['id']].append(tag.decode('UTF-8')) if tag.decode('UTF-8') not in NSGtags[aN['id']] else  NSGtags[aN['id']]
-      else:
-        NSGtags[aN['id']]=[]
-        NSGtags[aN['id']].append(tag.decode('UTF-8')) if tag.decode('UTF-8') not in NSGtags[aN['id']] else  NSGtags[aN['id']]
-    else:
-      if aN['id'] in NSGtags:
-        NSGtags[aN['id']].append("unknown") if "unknown" not in NSGtags[aN['id']] else  NSGtags[aN['id']]
-      else:
-        NSGtags[aN['id']]=[]
-        NSGtags[aN['id']].append("unknown")
-    if aN['id'] in NSGruleset:
-       NSGruleset[aN['id']].append(aR)
-    else:
-      NSGruleset[aN['id']]=[]
-      NSGruleset[aN['id']].append(aR)
 
 with open(dfile,'w') as data_file:
   json.dump(ruleset,data_file,indent=2)
-
-for an in NSGruleset:
-  aRl=NSGruleset[an]
-  for aR in aRl: 
-#    print("AR__",str(aR))
-    r.sadd('unknown',str(aR))
-
-def classify():
-  cntNotClosed=0
-  for key in NSGtags:
-    if len(NSGtags[key])>1:
-#      print(key,NSGtags[key])
-#      print(NSGruleset[key])
-#      print("**")
-      cntNotClosed=cntNotClosed+1
-    elif NSGtags[key][0]!="closed":
-#      print(key,NSGtags[key])
-#      print(NSGruleset[key])
-#      print("**")
-      cntNotClosed=cntNotClosed+1
-#  print("number of NSGs not closed: ",cntNotClosed)
-
-classify()

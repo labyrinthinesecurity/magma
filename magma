@@ -36,6 +36,7 @@ resources
 | mv-expand subs = properties.subnets
 | extend associated = isnotnull(nics) or isnotnull(subs)
 | where associated
+| distinct rule
     '''
     echo $query
     local records=`az graph query -q "$query" --first 1 --output json | jq .total_records`
