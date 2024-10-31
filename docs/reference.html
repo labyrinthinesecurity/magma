@@ -211,10 +211,10 @@
   <section id="section2" class="section">
     <div class="container">
 	  <h1 class="title has-text-white">Single shot operations</h1>
-	  <p>In this section, we describe initialization operations.</p><br>
-	  To install Magma and set environment variables, you please consult the README.md<br>
-	   <h2 class="title has-text-white is-size-4">Backfilling</h2>
-	   The following rule will import all your existing inbound NSGs as propositions into redis:
+	  <p>In this section, we describe initialization operations.</p>
+	  To install Magma and set environment variables, you please consult the README.md<p></p><br>&nbsp;
+	   <h2 class="title has-text-white is-size-4">NSGs backfilling</h2>
+	   The following rule will import all your applicable existing NSGs as inbound propositions into redis:
 	   <div class="notification is-small is-success">
 		 <pre>
 		magma --force:init --direction Inbound
@@ -231,12 +231,103 @@
 		total: 123
 		</pre>
 		</div>
-	</div>
+<br>Create a local golden source in local folder <i>source/</i> to store your decisions (and restore them if you want to rollback):
+	 <div class="notification is-small is-success">
+		 <pre>
+        ./magma --create:source --direction Inbound
+          </pre>
+       </div> 
+<br>Review all imported propositions one by one: inspect the rule and determine its status:
+	 <ul class="custom-list">
+<li> allow: the rule is OK, it can be directly turned into an allow axiom</li>
+<li> block: the rule is dangerous, it can be directly turned into a block axiom</li>
+<li> mix: part of the rule is OK, the other part is dangerous: split it to create an allow axiom and a block axiom</li>
+<li> undetermined: we don't know what to do with this rule for now: keep it untouched as a proposition. </li>
+</ul>
+<br> To turn the proposition into an allow axiom, use the <strong>prove:allow</strong> command:
+<div class="notification is-small is-success">
+		 <pre>
+        ./magma --prove:allow '{'protocol': 'TCP', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.20.0.0/15', 'destinationPort': '443'}' --direction Inbound
+          </pre>
+       </div> 
+	    <strong>prove:allow</strong> also appends this new axiom to the golden source, in <i>source/ALLOWED.txt</i>.
+<p>&nbsp;</p>		
+<br> To turn the proposition into a block axiom, use the <strong>prove:block</strong> command:
+<div class="notification is-small is-success">
+		 <pre>
+        ./magma --prove:block '{'protocol': '*', 'sourceAddressPrefix': 'Storage.NorthEurope', 'destinationAddressPrefix': '10.0.0.10/32', 'destinationPort': '443'}' --direction Inbound
+          </pre>
+       </div>	 
+<strong>prove:block</strong> also appends this new axiom to the golden source, in <i>source/BLOCKED.txt</i>.
+<p>&nbsp;</p>		
+<br> If you make a mistake, simply edit source/ALLOWED.txt (or source/BLOKED.txt), remove the line, and restore the state using <strong>cach:init</strong> then <strong>force:redo</strong>:
+<div class="notification is-small is-success">
+		 <pre>
+        ./magma --cache:init --direction Inbound
+        ./magma --force:redo --direction Inbound
+          </pre>
+       </div>	
+<strong>cache:init</strong> imports your NSGs from a local file (managed by magma) rather than directly from Azure: this is faster. 
+You may use <strong>force:init</strong> if you prefer.
+
+<strong>force:redo</strong> restores the golden source without re-proving each individual axiom, so it is very fast.
+In production, ALWAYS use <strong>prove:redo</strong>. It restores axioms, proving them first.
+<p>&nbsp;</p><br>
+If <strong>prove:redo</strong> cannot prove an axiom, it will explain why by printing all the counter examples which cannot be satisfied:
+<div class="notification is-small is-success">
+		 <pre>
+        ./magma --prove:redo --direction Inbound
+        {"protocol": "TCP", "sourceAddressPrefix": "VirtualNetwork", "destinationAddressPrefix": "VirtualNetwork", "destinationPort": "80"}
+        PROPOSITION 1 {"protocol": "TCP", "sourceAddressPrefix": "VirtualNetwork", "destinationAddressPrefix": "VirtualNetwork", "destinationPort": "80"}
+          proposition 1 intersects only the closed class
+        NOT proved
+    
+	counterexample(s)
+        {'protocol': '0', 'sourceAddressPrefix': 'VirtualNetwork', 'destinationAddressPrefix': 'VirtualNetwork', 'destinationPort': '80'}
+         FATAL: cannot prove block axiom: {"protocol": "TCP", "sourceAddressPrefix": "VirtualNetwork", "destinationAddressPrefix": "VirtualNetwork", "destinationPort": "80"}
+          </pre>
+       </div>
+<p>&nbsp;</p>		
+<br>List the remaining propositions and ensure that their number has decreased by one:	  
+<div class="notification is-small is-success">
+		 <pre>
+        ./magma --list --direction Inbound
+          </pre>
+       </div>
+Repeat the process until you've reviewed all the propositions (i.e. the list is empty except undetermined propositions)
+<p></p><br>&nbsp;	 
+<h2 class="title has-text-white is-size-4">Backup the golden source</h2>
+You are strongly advised to make a regular copy of your golden source using <strong>backup:source</strong>, 
+	   this will save you the pain to start over the whole process should you erase ALLOWED.txt or BLOCKED.txt by mistake 
+<div class="notification is-small is-success">
+		 <pre>
+        ./magma --backup:source --direction Inbound
+          </pre>
+       </div>
+</div>
   </section>
    <section id="section3" class="section">
     <div class="container">
 	  <h1 class="title has-text-white">Day to day operations</h1>
-	  TBC.
+<p></p><br>&nbsp;	 
+<h2 class="title has-text-white is-size-4">Perform impact analysis (what if scenario)</h2> 
+Suppose you want to assess the impact of adding an allow axiom to the Inbound direction. The <strong>whatIf</strong> command wil let you know if it is possible, 
+and , if not, what is the acceptable subset.
+<div class="notification is-small is-success">
+		 <pre>
+        ./magma --whatIf '{'protocol': '*', 'sourceAddressPrefix': '*', 'destinationAddressPrefix': '10.1.0.0/15', 'destinationPort': '443'}' --direction Inbound
+          </pre>
+       </div>
+<p></p><br>&nbsp;Currently, whatIf only works for allow axioms, not for block axioms.
+  <p></p><br>&nbsp;	 
+<h2 class="title has-text-white is-size-4">Check NSGs drift</h2> 
+Run a regular cron job to check if the depoyed NSGs have drifted from the set of allow and block axioms stored in cache (also stored in the golden source)
+<div class="notification is-small is-success">
+		 <pre>
+        ./magma --drift --direction Inbound
+          </pre>
+       </div>
+<p></p><br>&nbsp;
 	</div>
   </section> 
 </body>

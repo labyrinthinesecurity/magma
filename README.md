@@ -25,6 +25,13 @@ These are the ones featuring ***custom rules*** (not default rules), in ***allow
 - A ***proposition*** is an unproven security rule.
 - An ***axiom*** is a proven security rule. Axioms can be of two kinds: allow, and block.
 
+The ONE single principle to understand for scalability is that all security rules belonging to the same class are equivalent:
+Suppose a security rule allows flows from 'VirtualNetwork' to '*' on port 80 in a NSG implemented in subscription A, and that another rule allows flows from '10.0.0.0/8' to '10.10.0.0/16' on port 443 in a NSG implemented in subscription B.
+
+For Magma, both security rules will be the equivalent!
+
+That's why it is critically important to scope Azure Magma to similar subscriptions, using proper management groups.
+
 ### Resources
 There is no GUI: all operations are carried out using the Magma CLI, which is [documented here](https://labyrinthinesecurity.github.io/magma/reference.html).
 
@@ -189,8 +196,8 @@ Use the **create:source** command to create a golden source of allowed axioms (A
 Inspect the rule and determine a status:
 - allow: the rule is OK, it can be directly turned into an allow axiom
 - block: the rule is dangerous, it can be directly turned into a block axiom
-- mix: part of the rule is OK, the other part is dangerous: we break split it to create an allow axiom and a block axiom
-- undetermined: we don't know what to do with this rule for now: we keep it as a proposition.
+- mix: part of the rule is OK, the other part is dangerous: split it to create an allow axiom and a block axiom
+- undetermined: we don't know what to do with this rule for now: keep it untouched as a proposition.
 
 #### Turn a proposition into an axiom
 
@@ -240,7 +247,7 @@ Here again, edit source/BLOCKED.txt if you make a mistake, then restore the gold
 ./magma --force:redo --direction Inbound
 ```
 
-List the remaining propositions and ensure that the counter has decreased by one:
+List the remaining propositions and ensure that their number has decreased by one:
 ```
 ./magma --list --direction Inbound
 ```
@@ -268,7 +275,7 @@ Here is another example where we forbid reaching TCP port 80 from the Virtual Ne
 
 If you make an error, proceed as explained before: edit ALLOWED.txt or BLOCKED.txt then issue a redo command
 
-Note that if you list propositions, this "split" rule will remain and the counter won't decrease. That's because NSG owners MUST modify their NSGs to align with the allow axiom. Only when all owners have updated their NSG will the proposition vanish from the list.
+Note that if you list propositions, this "split" rule will remain and the number of propositions won't decrease. That's because NSG owners MUST modify their NSGs to align with the allow axiom. Only when all owners have updated their NSG will the proposition vanish from the list.
 
 #### Backup the golden source!
 
