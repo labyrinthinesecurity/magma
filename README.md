@@ -4,18 +4,24 @@
 
 
 ## What is Azure Magma (Preview)?
-***Azure Magma*** is a free but powerful tool that lets medium and large organizations automate the management of ***thousands*** of Network Security Groups in a cost-efficient way. 
-It uses a SMT solver to implement the super-fast ALLBVSAT algorithm, from Microsoft's secGuru.
+***Azure Magma*** is a free but powerful tool that lets organizations automate the management of ***thousands*** of Network Security Groups in a cost-efficient way. 
+It uses a SMT solver to implement Microsoft's super-fast ALLBVSAT algorithm.
 
 The two main uses cases addressed by Magma are:
 1. **Impact analysis**: what if I add this rule to a NSG? To answer the question, Magma will break the rule into its biggest unknown components, so that everything that was already allowed or blocked in the past is not revalidated
 2. **Drift management**: if a new rule shows up, is it already allowed? blocked? partially allowed? what remains to review manualy?
 
-To use this tool, your organization should ideally meet 4 criteria:
+To use this tool, your organization should meet 2 criteria:
 - have a devSecOps model where each local feature team manages its own security groups independently
-- have central supervision: a single security team oversees network security
-- embrace **identity-based** zero-trust: your network segmentation shouldn't be too fine-grain. Rather, it should let relatively large source and destination IP ranges communicate freely on a per-portbasis
-- have a default rule in every NSG which blocks everything that hasn't been explicitely allowed. This rule shouldn't be overriden by a more lenient, higher priority one, of course.
+- your assets perimeter should embrace **identity-based** zero-trust: your network segmentation shouldn't be too fine-grain. Rather, it should let relatively large source and destination IP ranges communicate freely on a per-port basis
+
+Proper scoping of the assets perimeter is very important: you may have as many network zones (VNets) in scope, but whenever a security rule is allowed or denied in one zone at the subnet or NIC level, it should be allowed in **all** zones (***property 1***). So, the function and the network security guarantees of all zones in scope should be identical, even if zones are dedicated to independent business apps. Property 1 should drive the delineation of scopes, and not the other way around. 
+
+Another important feature is that, unlike in Azure, security rules share all the same priority. Conflicts between allowed rules and denied rules is prevented by the structure of the underlying logic representation called a Magma Quotient (see theoretical foundations and mathematical assumptions in the ressources section below). This is ***property 2***.
+
+Finally, you must have a default catch-all deny rule in every NSG which blocks everything that hasn't been explicitely allowed. In deployed NSGs, this rule shouldn't be overriden by a more lenient, higher priority one, of course (***property 3***)
+
+An information system / a cloud deployment meeting properties 1,2 and 3 are called **Magmatic systems**.
 
 ### Concepts
 Magma fetches your NSGs from Azure, but it doesn't fetch all NSGs: only the useful ones! 
@@ -25,7 +31,7 @@ These are the ones featuring ***custom rules*** (not default rules), in ***allow
 - A ***proposition*** is an unproven security rule.
 - An ***axiom*** is a proven security rule. Axioms can be of two kinds: allow, and block.
 
-The ONE single principle to understand for scalability is that all security rules belonging to the same class are equivalent:
+The ONE single principle to understand for scalability is that all security rules belonging to the same class are equivalent (because of ***property 1***):
 Suppose a security rule allows flows from 'VirtualNetwork' to '*' on port 80 in a NSG implemented in subscription A, and that another rule allows flows from '10.0.0.0/8' to '10.10.0.0/16' on port 443 in a NSG implemented in subscription B.
 
 For Magma, both security rules will be the equivalent!

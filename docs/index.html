@@ -42,7 +42,7 @@
       </h1>
       <center><img src="../magma.png"></center>
       <p class="">
-        A Magma is one of the simplests structure one can imagine: it's a simply set equiped with an operation.
+        A Magma is one of the simplests structure one can imagine: it's a mere set equiped with an operation.
 	    We use it to store Azure <strong>Network Security Groups (NSGs)</strong> of a whole organization to reason about their security at scale and automatically.
       </p>
 	  <br>
@@ -51,6 +51,8 @@
 		The operation acting on hyperrectangles is the union operation, denoted '+'. Thus, a NSG can be thought of as an addition of many hyperrectangles.
       </p>
 	  <br>
+	  <p></p><br>&nbsp;	 
+<h2 class="title has-text-white is-size-4">Property 1: rules equivalence</h2> 
 	  <p class="">
         <p>The Magma is partitioned into two equivalence classes, called <strong>allow</strong> and <strong>block</strong>. The resulting partition is a Maqma Quotient.</p><br>
 		The ONE single principle to understand for scalability is that all security rules belonging to the same class are equivalent:<br>
@@ -62,6 +64,20 @@
       </p>
 	  <br>
 	  <p>Please consult the <a href="reference.html">reference guide</a> for detailed operations.</p>
+	  	  <p></p><br>&nbsp;	 
+<h2 class="title has-text-white is-size-4">Property 2: depriorization</h2> 
+	  <p class="">
+	  In an Azure NSG, security rules are given a priority: this is not the case with Magma: all rules have the same priority. There are no possible conflicts between
+	  allowed rules and denied rules, because of the structure of the Magma Quotient.
+	  <p></p><br>&nbsp;	
+<h2 class="title has-text-white is-size-4">Property 3: catch-all rule</h2> 
+	  <p class="">
+	  You must have a default catch-all deny rule in every NSG which blocks everything that hasn't been explicitely allowed. 
+	  In deployed NSGs, this rule shouldn't be overriden by a more lenient, higher priority one, of course. 
+	  </p><br>&nbsp;
+<h2 class="title has-text-white is-size-4">Magmatic systems</h2> 
+	  <p class="">
+	  Information systems / cloud deployments meeting the 3 above properties are compatible with the NSG management paradigm of Azure Magma: they are called <strong>Magmatic Systems</strong>. 	  
      </div>
   </section>
   <section id="section1" class="section">
